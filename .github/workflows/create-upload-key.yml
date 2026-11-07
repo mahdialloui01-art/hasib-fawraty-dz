@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   create-upload-key:
@@ -19,11 +18,16 @@ jobs:
 
       - name: Generate upload key and save only as encrypted GitHub Actions secrets
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
           REPOSITORY: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Add a temporary fine-grained PAT as the REPO_ADMIN_TOKEN repository secret first."
+            exit 1
+          fi
+
           KEY_DIR="$RUNNER_TEMP/hasib-upload-key"
           mkdir -p "$KEY_DIR"
           STORE_PASSWORD="$(openssl rand -hex 32)"
@@ -81,10 +85,12 @@ jobs:
               })
               print("Saved encrypted repository secret:", name)
 
-          print("SUCCESS: all four signing secrets were saved.")
+          # Remove the temporary administrative token from repository secrets.
+          call(api + "/REPO_ADMIN_TOKEN", "DELETE")
+          print("SUCCESS: all four signing secrets were saved; temporary admin token removed.")
           PY
 
-      - name: Confirm temporary signing files are not published
+      - name: Remove temporary signing files from runner
         if: always()
         run: |
           rm -rf "$RUNNER_TEMP/hasib-upload-key"
