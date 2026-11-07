@@ -1,6 +1,13 @@
 package dz.hasibfawraty.app
 
 import android.os.Bundle
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -73,6 +80,19 @@ class MainActivity : ComponentActivity() {
 }
 
 data class BillCategory(val title: String, val subtitle: String, val icon: ImageVector, val color: Color)
+data class BillHistoryEntry(val id:String,val category:String,val amount:Double,val details:String,val createdAt:Long)
+private object BillHistoryStore {
+ private const val PREF="bill_history"
+ fun load(c:Context):List<BillHistoryEntry> = try {
+  val a=JSONArray(c.getSharedPreferences(PREF,0).getString("items","[]") ?: "[]")
+  (0 until a.length()).map { i -> a.getJSONObject(i).let { o -> BillHistoryEntry(o.getString("id"),o.getString("category"),o.getDouble("amount"),o.optString("details"),o.getLong("date")) } }.sortedByDescending { it.createdAt }
+ } catch (_:Exception) { emptyList() }
+ fun save(c:Context,items:List<BillHistoryEntry>) {
+  val a=JSONArray()
+  items.forEach { e -> a.put(JSONObject().put("id",e.id).put("category",e.category).put("amount",e.amount).put("details",e.details).put("date",e.createdAt)) }
+  c.getSharedPreferences(PREF,0).edit().putString("items",a.toString()).apply()
+ }
+}
 
 private fun waterTariffZone(wilaya: String): String = when (wilaya) {
     "الشلف", "عين الدفلى", "غليزان", "تيارت", "تيسمسيلت", "الجلفة" -> "CHLEF"
