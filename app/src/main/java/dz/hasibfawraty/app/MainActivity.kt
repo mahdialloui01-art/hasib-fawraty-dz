@@ -42,6 +42,22 @@ class MainActivity : ComponentActivity() {
 
 data class BillCategory(val title: String, val subtitle: String, val icon: ImageVector, val color: Color)
 
+private fun waterTariffZone(wilaya: String): String = when (wilaya) {
+    "الشلف", "عين الدفلى", "غليزان", "تيارت", "تيسمسيلت", "الجلفة" -> "CHLEF"
+    "ورقلة", "الوادي", "إليزي", "الأغواط", "غرداية", "بشار", "تندوف", "أدرار", "تمنراست" -> "OUARGLA"
+    "وهران", "عين تموشنت", "تلمسان", "مستغانم", "معسكر", "سيدي بلعباس", "سعيدة", "النعامة", "البيض" -> "ORAN"
+    "قسنطينة", "جيجل", "ميلة", "باتنة", "خنشلة", "بسكرة", "عنابة", "الطارف", "سكيكدة", "سوق أهراس", "قالمة", "تبسة", "أم البواقي" -> "CONSTANTINE"
+    else -> "ALGER"
+}
+
+private fun waterZoneLabel(zone: String): String = when (zone) {
+    "CHLEF" -> "منطقة الشلف"
+    "OUARGLA" -> "منطقة ورقلة"
+    "ORAN" -> "منطقة وهران"
+    "CONSTANTINE" -> "منطقة قسنطينة"
+    else -> "منطقة الجزائر"
+}
+
 @Composable
 fun HasibApp() {
     val categories = listOf(
@@ -161,6 +177,9 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     var telecomPrice by remember { mutableStateOf("") }
     var extra by remember { mutableStateOf("0") }
     var otherBillLines by remember { mutableStateOf("0") }
+    var waterWilaya by remember { mutableStateOf("قسنطينة") }
+    var waterMenuExpanded by remember { mutableStateOf(false) }
+    var waterCategory by remember { mutableStateOf("HOME") }
     val isElectric = item.title == "الكهرباء"
     val isGas = item.title == "الغاز"
     val isWater = item.title == "الماء"
@@ -171,7 +190,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     val estimate = when {
         isElectric && a != null && b != null && b >= a -> AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
         isGas && a != null && b != null && b >= a && (factor.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0.0 -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 0.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
-        isWater && a != null && a >= 0 -> AlgerianTariffs.water(a, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
+        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, count, waterTariffZone(waterWilaya), waterCategory, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
         else -> null
     }
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
@@ -224,8 +243,31 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                     Text("اختر القيمة المطابقة لخانة PMD في فاتورتك.", color = Gold, fontSize = 10.sp)
                 }
             } else if (isWater) {
-                CalcField("الاستهلاك خلال الفترة (m³)", first) { first = it }
-                Text("التعريفة المنزلية محسوبة حسب شرائح الاستهلاك الفصلية، مع الماء والتطهير والاشتراك.", color = Muted, fontSize = 11.sp)
+                CalcField("المؤشر القديم لعداد الماء", first) { first = it }
+                Spacer(Modifier.height(9.dp))
+                CalcField("المؤشر الجديد لعداد الماء", second) { second = it }
+                Spacer(Modifier.height(10.dp))
+                Text("اختر الولاية لتحديد منطقة التسعير تلقائياً", color = Muted, fontSize = 12.sp)
+                Box {
+                    OutlinedButton(onClick = { waterMenuExpanded = true }) {
+                        Text(waterWilaya, color = Color.White)
+                        Icon(Icons.Default.ArrowDropDown, null, tint = Green)
+                    }
+                    DropdownMenu(expanded = waterMenuExpanded, onDismissRequest = { waterMenuExpanded = false }) {
+                        listOf("أدرار", "الشلف", "الأغواط", "أم البواقي", "باتنة", "بجاية", "بسكرة", "بشار", "البليدة", "البويرة", "تمنراست", "تبسة", "تلمسان", "تيارت", "تيزي وزو", "الجزائر", "الجلفة", "جيجل", "سطيف", "سعيدة", "سكيكدة", "سيدي بلعباس", "عنابة", "قالمة", "قسنطينة", "المدية", "مستغانم", "المسيلة", "معسكر", "ورقلة", "وهران", "البيض", "إليزي", "برج بوعريريج", "بومرداس", "الطارف", "تندوف", "تيسمسيلت", "الوادي", "خنشلة", "سوق أهراس", "تيبازة", "ميلة", "عين الدفلى", "النعامة", "عين تموشنت", "غرداية", "غليزان").forEach { wilaya ->
+                            DropdownMenuItem(text = { Text(wilaya) }, onClick = { waterWilaya = wilaya; waterMenuExpanded = false })
+                        }
+                    }
+                }
+                Text(waterZoneLabel(waterTariffZone(waterWilaya)), color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text("نوع الاشتراك", color = Muted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    FilterChip(selected = waterCategory == "HOME", onClick = { waterCategory = "HOME" }, label = { Text("منزلي") })
+                    FilterChip(selected = waterCategory == "ADMIN", onClick = { waterCategory = "ADMIN" }, label = { Text("إداري/تجاري") })
+                    FilterChip(selected = waterCategory == "INDUSTRY", onClick = { waterCategory = "INDUSTRY" }, label = { Text("صناعي/سياحي") })
+                }
+                Text("الحساب يعتمد شرائح الاستهلاك الفصلية ويشمل الماء والتطهير والاشتراك الثابت. اختر نفس نوع الاشتراك الموجود في فاتورتك.", color = Muted, fontSize = 11.sp)
             } else {
                 CalcField("سعر الاشتراك للفترة (دج)", telecomPrice) { telecomPrice = it }
                 CalcField("إضافات أو مستحقات أخرى (دج)", extra) { extra = it }
@@ -270,8 +312,8 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
             isElectric && (a == null || b == null) -> {
                 ResultHint("النتيجة تظهر هنا", "أدخل المؤشر القديم والجديد واضغط على القيم لتظهر النتيجة مباشرة.")
             }
-            isWater && a == null -> {
-                ResultHint("النتيجة تظهر هنا", "أدخل استهلاك الماء بالمتر المكعب لتظهر قيمة الفاتورة المتوقعة.")
+            isWater && (a == null || b == null) -> {
+                ResultHint("النتيجة تظهر هنا", "أدخل المؤشر القديم والجديد لعداد الماء، واختر الولاية ونوع الاشتراك.")
             }
             else -> {
                 ResultHint("تحقق من البيانات", "تأكد أن المؤشر الجديد أكبر من أو يساوي المؤشر القديم وأن القيم صحيحة.")
