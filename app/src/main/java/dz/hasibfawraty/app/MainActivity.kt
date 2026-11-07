@@ -207,12 +207,21 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                     Text("أدخل قيمة PCS الظاهرة في فاتورتك حتى لا يكون الحساب تخمينياً.", color = Gold, fontSize = 11.sp)
                 } else {
                     Spacer(Modifier.height(9.dp))
-                    Text("القدرة المتعاقد عليها (kW)", color = Muted, fontSize = 12.sp)
+                    Text("القدرة المتعاقد عليها (PMD)", color = Muted, fontSize = 12.sp)
+                    Text("أحادي الطور 220V", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("4", "6", "12", "20", "40").forEach { v ->
-                            FilterChip(selected = kw == v, onClick = { kw = v }, label = { Text(v) })
+                        listOf("4", "6", "12").forEach { v ->
+                            FilterChip(selected = kw == v, onClick = { kw = v }, label = { Text("$v kW") })
                         }
                     }
+                    Spacer(Modifier.height(6.dp))
+                    Text("ثلاثي الطور 380V", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("20", "40", "60", "80").forEach { v ->
+                            FilterChip(selected = kw == v, onClick = { kw = v }, label = { Text("$v kW") })
+                        }
+                    }
+                    Text("اختر القيمة المطابقة لخانة PMD في فاتورتك.", color = Gold, fontSize = 10.sp)
                 }
             } else if (isWater) {
                 CalcField("الاستهلاك خلال الفترة (m³)", first) { first = it }
