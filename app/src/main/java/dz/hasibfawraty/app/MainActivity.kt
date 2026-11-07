@@ -33,6 +33,23 @@ private val Green = Color(0xFF20C997)
 private val Gold = Color(0xFFFFC857)
 private val Muted = Color(0xFF9EAFBD)
 
+private fun calculateConsumptionRight(electricKwh: Double): Double = when {
+    electricKwh > 390.0 -> 200.0
+    electricKwh > 190.0 -> 100.0
+    electricKwh > 70.0 -> 25.0
+    else -> 0.0
+}
+
+private fun calculateHousingTax(months: Int, professional: Boolean, highRateArea: Boolean): Double {
+    val annual = when {
+        professional && highRateArea -> 3200.0
+        professional -> 1600.0
+        highRateArea -> 800.0
+        else -> 400.0
+    }
+    return annual * months.coerceIn(1, 12) / 12.0
+}
+
 private fun calculateCashStamp(amountTtc: Double): Double {
     if (amountTtc <= 300.0) return 0.0
     val ratePerHundred = when {
@@ -191,6 +208,8 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     var extra by remember { mutableStateOf("0") }
     var otherBillLines by remember { mutableStateOf("0") }
     var paymentMethod by remember { mutableStateOf("CASH") }
+    var premisesType by remember { mutableStateOf("HOME") }
+    var housingArea by remember { mutableStateOf("HIGH") }
     var waterWilaya by remember { mutableStateOf("قسنطينة") }
     var waterMenuExpanded by remember { mutableStateOf(false) }
     var waterCategory by remember { mutableStateOf("HOME") }
@@ -210,13 +229,16 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
         AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, 0.0) else null
     val gasEstimate = if (isSonelgaz && gasA != null && gasB != null && gasB >= gasA && (pcsValue ?: 0.0) > 0.0)
         AlgerianTariffs.gas(gasA, gasB, pcsValue!!, count, 0.0) else null
+    val electricKwh = if (a != null && b != null && b >= a) b - a else 0.0
+    val consumptionRight = if (isSonelgaz && premisesType == "HOME" && electricEstimate != null) calculateConsumptionRight(electricKwh) else 0.0
+    val housingTax = if (isSonelgaz) calculateHousingTax(count, premisesType == "PRO", housingArea == "HIGH") else 0.0
     val sonelgazReady = isSonelgaz && electricEstimate != null && gasEstimate != null
     val estimate = when {
         isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, 3, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), invoiceExtras)
         else -> null
     }
     val sonelgazTotal = (electricEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) +
-        (gasEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) + invoiceExtras
+        (gasEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) + consumptionRight + housingTax + invoiceExtras
     val cashStamp = if (paymentMethod == "CASH" && sonelgazReady) calculateCashStamp(sonelgazTotal) else 0.0
     val sonelgazPayable = sonelgazTotal + cashStamp
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
@@ -337,10 +359,22 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 }
             }
             if (!isTelecom) {
-                CalcField(if (isSonelgaz) "الرسوم الأخرى TTC (حقوق الاستهلاك/ضريبة السكن/ديون/خدمات — دون الطابع)" else "الرسوم الأخرى TTC (حسب فاتورتك)", otherBillLines) { otherBillLines = it }
-                Text(if (isSonelgaz) "أدخل حقوق الاستهلاك وضريبة السكن والديون والخدمات فقط. الطابع النقدي يُحسب تلقائياً ولا تدخله هنا." else "أدخل مجموع الرسوم الظاهرة في فاتورتك مرة واحدة فقط.", color = Gold, fontSize = 10.sp)
+                CalcField(if (isSonelgaz) "ديون/خدمات/REPE/RGPE أخرى TTC فقط" else "الرسوم الأخرى TTC (حسب فاتورتك)", otherBillLines) { otherBillLines = it }
+                Text(if (isSonelgaz) "حقوق الاستهلاك ورسم السكن والطابع تُحسب آلياً؛ أدخل هنا فقط الديون أو الخدمات أو أقساط الربط غير المبرمجة." else "أدخل مجموع الرسوم الظاهرة في فاتورتك مرة واحدة فقط.", color = Gold, fontSize = 10.sp)
             }
             if (isSonelgaz) {
+                Spacer(Modifier.height(10.dp))
+                Text("نوع المحل", color = Muted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = premisesType == "HOME", onClick = { premisesType = "HOME" }, label = { Text("سكني") })
+                    FilterChip(selected = premisesType == "PRO", onClick = { premisesType = "PRO" }, label = { Text("مهني") })
+                }
+                Text("منطقة رسم السكن", color = Muted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = housingArea == "NORMAL", onClick = { housingArea = "NORMAL" }, label = { Text("بلدية عادية") })
+                    FilterChip(selected = housingArea == "HIGH", onClick = { housingArea = "HIGH" }, label = { Text("مقر دائرة / الجزائر / عنابة / قسنطينة / وهران") })
+                }
+                Text("يُحسب رسم السكن السنوي بالتناسب مع مدة الفوترة. اختر المنطقة حسب بلديتك.", color = Gold, fontSize = 10.sp)
                 Spacer(Modifier.height(10.dp))
                 Text("طريقة الدفع", color = Muted, fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -354,7 +388,9 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("تفصيل فاتورة سونلغاز الموحدة", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 Text("الكهرباء: HT %.2f دج • TVA %.2f دج".format(electricEstimate!!.subtotalHt, electricEstimate.vat), color = Muted, fontSize = 12.sp)
                 Text("الغاز: HT %.2f دج • TVA %.2f دج".format(gasEstimate!!.subtotalHt, gasEstimate.vat), color = Muted, fontSize = 12.sp)
-                Text("الرسوم الأخرى المدخلة مرة واحدة: %.2f دج".format(invoiceExtras), color = Muted, fontSize = 12.sp)
+                Text("حقوق ثابتة على الاستهلاك: %.2f دج".format(consumptionRight), color = Muted, fontSize = 12.sp)
+                Text("رسم السكن للفترة: %.2f دج".format(housingTax), color = Muted, fontSize = 12.sp)
+                Text("الديون والخدمات الإضافية: %.2f دج".format(invoiceExtras), color = Muted, fontSize = 12.sp)
                 Text("الصافي TTC قبل الطابع: %.2f دج".format(sonelgazTotal), color = Muted, fontSize = 12.sp)
                 Text("الطابع النقدي: %.2f دج".format(cashStamp), color = Muted, fontSize = 12.sp)
             }
