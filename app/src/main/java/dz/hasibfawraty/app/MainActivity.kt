@@ -1,6 +1,8 @@
 package dz.hasibfawraty.app
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -22,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -88,6 +91,7 @@ private fun waterZoneLabel(zone: String): String = when (zone) {
 
 @Composable
 fun HasibApp() {
+    val context = LocalContext.current
     val categories = listOf(
         BillCategory("سونلغاز", "فاتورة موحدة • الكهرباء والغاز", Icons.Default.Bolt, Color(0xFFFFC857)),
         BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
@@ -122,6 +126,16 @@ fun HasibApp() {
                         Column {
                             Text("حاسب فاتورتي", fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                             Text("DZ  •  مصاريفك تحت السيطرة", color = Muted, fontSize = 12.sp)
+                            Text(
+                                "سياسة الخصوصية",
+                                color = Green,
+                                fontSize = 11.sp,
+                                modifier = Modifier.clickable {
+                                    runCatching {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://mahdialloui01-art.github.io/hasib-fawraty-dz/privacy-policy.html")))
+                                    }
+                                }
+                            )
                         }
                         Box(Modifier.size(46.dp).background(Brush.linearGradient(listOf(Green, Color(0xFF087F68))), CircleShape), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
