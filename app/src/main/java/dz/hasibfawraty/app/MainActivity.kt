@@ -153,7 +153,7 @@ private fun CategoryCard(item: BillCategory, onClick: () -> Unit) {
 private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
-    var factor by remember { mutableStateOf("9.5") }
+    var factor by remember { mutableStateOf("") }
     var kw by remember { mutableStateOf("6") }
     var months by remember { mutableStateOf("3") }
     var telecomPrice by remember { mutableStateOf("") }
@@ -167,7 +167,7 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
     val b = second.replace(',', '.').toDoubleOrNull()
     val estimate = when {
         isElectric && a != null && b != null && b >= a -> AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count)
-        isGas && a != null && b != null && b >= a -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 9.5, count)
+        isGas && a != null && b != null && b >= a && (factor.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0.0 -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 0.0, count)
         isWater && a != null && a >= 0 -> AlgerianTariffs.water(a, count)
         else -> null
     }
@@ -201,7 +201,7 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
                 if (isGas) {
                     Spacer(Modifier.height(9.dp))
                     CalcField("معامل PCS (من فاتورتك)", factor) { factor = it }
-                    Text("لا تستعمل معاملًا ثابتًا؛ أدخل قيمة PCS الظاهرة في فاتورتك.", color = Gold, fontSize = 11.sp)
+                    Text("أدخل قيمة PCS الظاهرة في فاتورتك حتى لا يكون الحساب تخمينياً.", color = Gold, fontSize = 11.sp)
                 } else {
                     Spacer(Modifier.height(9.dp))
                     Text("القدرة المتعاقد عليها (kW)", color = Muted, fontSize = 12.sp)
