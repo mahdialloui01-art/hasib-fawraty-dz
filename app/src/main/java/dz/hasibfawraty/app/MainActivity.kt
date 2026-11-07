@@ -119,7 +119,17 @@ fun HasibApp() {
                 }
             }
         ) { padding ->
-            if (selected != null) {
+            if (tab == 3 && selected == null) {
+                SettingsScreen(
+                    contentPadding = padding,
+                    onSupport = {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/mahdialloui01-art/hasib-fawraty-dz/issues"))) }
+                    },
+                    onPublishedPolicy = {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/mahdialloui01-art/hasib-fawraty-dz/blob/main/docs/privacy-policy.html"))) }
+                    }
+                )
+            } else if (selected != null) {
                 CategoryDetail(selected!!, contentPadding = padding, onBack = { selected = null })
             } else {
                 Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
@@ -128,16 +138,6 @@ fun HasibApp() {
                         Column {
                             Text("حاسب فاتورتي", fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                             Text("DZ  •  مصاريفك تحت السيطرة", color = Muted, fontSize = 12.sp)
-                            Text(
-                                "سياسة الخصوصية",
-                                color = Green,
-                                fontSize = 11.sp,
-                                modifier = Modifier.clickable {
-                                    runCatching {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://mahdialloui01-art.github.io/hasib-fawraty-dz/privacy-policy.html")))
-                                    }
-                                }
-                            )
                         }
                         Box(Modifier.size(46.dp).background(Brush.linearGradient(listOf(Green, Color(0xFF087F68))), CircleShape), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
@@ -508,5 +508,62 @@ private fun EstimatePanel(total: Double, heading: String, note: String) {
         Text(heading, color = Color(0xFFC5E8DF), fontSize = 12.sp)
         Text("%.2f دج".format(total), color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
         Text(note, color = Color.White.copy(alpha = .75f), fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun SettingsScreen(
+    contentPadding: PaddingValues,
+    onSupport: () -> Unit,
+    onPublishedPolicy: () -> Unit
+) {
+    var showPrivacy by remember { mutableStateOf(false) }
+    Column(
+        Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 18.dp, vertical = 16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text("الإعدادات", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+        Text("الخصوصية والدعم ومعلومات التطبيق", color = Muted, fontSize = 12.sp)
+        Spacer(Modifier.height(18.dp))
+        SettingsRow(Icons.Default.Policy, "سياسة الخصوصية", "اقرأ السياسة مباشرة داخل التطبيق") { showPrivacy = true }
+        SettingsRow(Icons.Default.OpenInNew, "فتح نسخة السياسة على GitHub", "عرض ملف السياسة في مستودع المشروع", onPublishedPolicy)
+        SettingsRow(Icons.Default.SupportAgent, "الدعم والإبلاغ عن مشكلة", "افتح صفحة الدعم والتواصل", onSupport)
+        Spacer(Modifier.height(18.dp))
+        Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(18.dp)).padding(16.dp)) {
+            Text("حول التطبيق", color = Green, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Spacer(Modifier.height(6.dp))
+            Text("حاسب فاتورتي DZ", color = Color.White, fontWeight = FontWeight.Bold)
+            Text("الإصدار 1.0.0", color = Muted, fontSize = 12.sp)
+            Text("حاسبة تقديرية لفواتير الكهرباء والغاز والماء واتصالات الجزائر. النتائج ليست فاتورة رسمية.", color = Muted, fontSize = 11.sp)
+        }
+    }
+    if (showPrivacy) {
+        AlertDialog(
+            onDismissRequest = { showPrivacy = false },
+            confirmButton = { TextButton(onClick = { showPrivacy = false }) { Text("إغلاق") } },
+            title = { Text("سياسة الخصوصية") },
+            text = {
+                Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                    Text("آخر تحديث: 7 نوفمبر 2026\n\n1. البيانات: قد تدخل قراءات العدادات والاستهلاك والولاية ومعامل PCS والديون لغرض حساب الفاتورة.\n\n2. الجمع والإرسال: الإصدار الحالي لا يتطلب إنشاء حساب، ولا يرسل مدخلات الفواتير إلى خوادم المطوّر، ولا يتضمن إعلانات أو أدوات تحليل مدمجة.\n\n3. التخزين: لا يوفر الإصدار الحالي مزامنة سحابية أو حساباً لدى المطوّر. قد يحتفظ Android ببيانات التطبيق وفق إعدادات الجهاز؛ يمكن مسح بيانات التطبيق من إعدادات Android.\n\n4. الأذونات: لا يطلب التطبيق أذونات حساسة مثل الموقع أو جهات الاتصال أو الرسائل.\n\n5. الأطفال والتحديثات: التطبيق أداة عامة وليس موجهاً خصيصاً للأطفال. قد تُحدّث السياسة عند تغيير وظائف التطبيق.\n\n6. التواصل: للاستفسارات وطلبات الخصوصية، استخدم صفحة الدعم في GitHub.", color = Color.White)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 5.dp).background(Panel, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick).padding(15.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = Green, modifier = Modifier.size(25.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text(subtitle, color = Muted, fontSize = 10.sp)
+        }
+        Icon(Icons.Default.ChevronLeft, null, tint = Muted)
     }
 }
