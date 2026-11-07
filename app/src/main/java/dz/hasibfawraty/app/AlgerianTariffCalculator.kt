@@ -72,21 +72,29 @@ object AlgerianTariffs {
             progressive(m, listOf(25.0, 55.0, 82.0).map { it * months / 3.0 },
                 listOf(sanitationBase, sanitationBase * 3.25, sanitationBase * 5.5, sanitationBase * 6.5))
         } else m * sanitationBase * multiplier
-        val fixedPerQuarter = when (category) {
-            "ADMIN" -> 450.0 + 60.0
-            "INDUSTRY" -> 4500.0 + 2100.0
-            else -> 240.0 + 60.0
+        val (waterFixedPerQuarter, sanitationFixedPerQuarter) = when (category) {
+            "ADMIN" -> 450.0 to 60.0
+            "INDUSTRY" -> 4500.0 to 2100.0
+            else -> 240.0 to 60.0
         }
-        val fixed = fixedPerQuarter * months / 3.0
+        val waterFixed = waterFixedPerQuarter * months / 3.0
+        val sanitationFixed = sanitationFixedPerQuarter * months / 3.0
+        val fixed = waterFixed + sanitationFixed
         val ht = water + sanitation + fixed
+
+        // LF 2022, Article 94 / CTCA Article 23: 9% applies to drinking water supplied to households.
+        // Other customers remain at the normal 19% rate. Sanitation is a separate service and is
+        // kept at the normal rate; fixed subscription amounts are split by water/sanitation service.
+        val waterVatRate = if (category == "HOME") 0.09 else 0.19
+        val vat = (water + waterFixed) * waterVatRate + (sanitation + sanitationFixed) * 0.19
+
         // Water management levy: 3 DA per consumed m3. Resource-protection and water-economy levies:
         // 4% each in the North, 2% each in the specifically listed Southern wilayas.
         val managementLevy = m * 3.0
         val resourceLevyRate = if (southLevyRate) 0.02 else 0.04
         val resourceLevies = ht * resourceLevyRate * 2.0
         val levies = managementLevy + resourceLevies
-        val vat = ht * 0.09
         return Estimate(m, ht, vat, levies, max(0.0, otherBillLinesTtc), ht + vat + levies + max(0.0, otherBillLinesTtc),
-            "تقدير HT حسب المرسوم 05-13، مع إتاوة التسيير 3 دج/م³ وإتاوتي حماية النوعية واقتصاد الماء (4% أو 2% لكل واحدة حسب الولاية) وTVA 9%. الطابع والديون والخدمات الخاصة تُضاف يدوياً.")
+            "TVA: 9% على تزويد الماء للمنزلي فقط، و19% على التطهير وعلى خدمات/اشتراكات غير المنزلي، وفق قانون المالية 2022. يلزم مطابقة تفصيل TVA مع فاتورة الموزع.")
     }
 }
