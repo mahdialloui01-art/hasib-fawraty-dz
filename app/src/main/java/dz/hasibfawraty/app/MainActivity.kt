@@ -225,8 +225,8 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     var otherBillLines by remember { mutableStateOf("0") }
     var paymentMethod by remember { mutableStateOf("CASH") }
     var premisesType by remember { mutableStateOf("HOME") }
-    var housingArea by remember { mutableStateOf("HIGH") }
-    var waterWilaya by remember { mutableStateOf("قسنطينة") }
+    var housingArea by remember { mutableStateOf("NORMAL") }
+    var waterWilaya by remember { mutableStateOf("اختر الولاية") }
     var waterMenuExpanded by remember { mutableStateOf(false) }
     var waterCategory by remember { mutableStateOf("HOME") }
     val isSonelgaz = item.title == "سونلغاز"
@@ -250,7 +250,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     val housingTax = if (isSonelgaz) calculateHousingTax(count, premisesType == "PRO", housingArea == "HIGH") else 0.0
     val sonelgazReady = isSonelgaz && electricEstimate != null && gasEstimate != null
     val estimate = when {
-        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, count, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), invoiceExtras)
+        isWater && waterWilaya != "اختر الولاية" && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, count, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), invoiceExtras)
         else -> null
     }
     val sonelgazTotal = (electricEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) +
@@ -454,6 +454,9 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
             }
             isTelecom -> {
                 ResultHint("النتيجة تظهر هنا", "أدخل سعر اشتراك Idoom لتظهر قيمة المبلغ المتوقع مباشرة.")
+            }
+            isWater && waterWilaya == "اختر الولاية" -> {
+                ResultHint("اختر الولاية أولاً", "اختر ولاية مكان العداد حتى نحدد منطقة التسعير الصحيحة قبل حساب الفاتورة.")
             }
             isWater && (a == null || b == null) -> {
                 ResultHint("النتيجة تظهر هنا", "أدخل مؤشري العداد القديم والجديد، واختر الولاية ونوع الاشتراك لحساب الاستهلاك تلقائياً.")
