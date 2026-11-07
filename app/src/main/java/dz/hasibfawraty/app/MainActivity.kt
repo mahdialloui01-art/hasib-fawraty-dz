@@ -241,6 +241,8 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
         (gasEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) + consumptionRight + housingTax + invoiceExtras
     val cashStamp = if (paymentMethod == "CASH" && sonelgazReady) calculateCashStamp(sonelgazTotal) else 0.0
     val sonelgazPayable = sonelgazTotal + cashStamp
+    val waterStamp = if (isWater && estimate != null && paymentMethod == "CASH") calculateCashStamp(estimate.total) else 0.0
+    val waterPayable = (estimate?.total ?: 0.0) + waterStamp
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
             (extra.replace(',', '.').toDoubleOrNull() ?: 0.0)
 
@@ -362,6 +364,15 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 CalcField(if (isSonelgaz) "ديون/خدمات/REPE/RGPE أخرى TTC فقط" else "الرسوم الأخرى TTC (حسب فاتورتك)", otherBillLines) { otherBillLines = it }
                 Text(if (isSonelgaz) "حقوق الاستهلاك ورسم السكن والطابع تُحسب آلياً؛ أدخل هنا فقط الديون أو الخدمات أو أقساط الربط غير المبرمجة." else "أدخل مجموع الرسوم الظاهرة في فاتورتك مرة واحدة فقط.", color = Gold, fontSize = 10.sp)
             }
+            if (isWater) {
+                Spacer(Modifier.height(10.dp))
+                Text("طريقة الدفع", color = Muted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = paymentMethod == "CASH", onClick = { paymentMethod = "CASH" }, label = { Text("نقداً") })
+                    FilterChip(selected = paymentMethod == "ELECTRONIC", onClick = { paymentMethod = "ELECTRONIC" }, label = { Text("إلكتروني") })
+                }
+                Text(if (paymentMethod == "CASH") "يُضاف طابع المخالصة نقداً حسب المبلغ؛ الدفع الإلكتروني معفى." else "الدفع الإلكتروني معفى من طابع المخالصات.", color = Gold, fontSize = 10.sp)
+            }
             if (isSonelgaz) {
                 Spacer(Modifier.height(10.dp))
                 Text("نوع المحل", color = Muted, fontSize = 12.sp)
@@ -402,6 +413,10 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("TVA: %.2f دج".format(estimate.vat), color = Muted, fontSize = 12.sp)
                 if (estimate.extra > 0) Text(if (isWater) "إتاوات الماء (التسيير وحماية النوعية واقتصاد الماء): %.2f دج".format(estimate.extra) else "الرسم الثابت على الاستهلاك: %.2f دج".format(estimate.extra), color = Muted, fontSize = 12.sp)
                 if (estimate.otherBillLines > 0) Text("باقي بنود الفاتورة المدخلة: %.2f دج".format(estimate.otherBillLines), color = Muted, fontSize = 12.sp)
+                if (isWater) {
+                    Text("المبلغ قبل الطابع: %.2f دج".format(estimate.total), color = Muted, fontSize = 12.sp)
+                    Text("الطابع النقدي: %.2f دج".format(waterStamp), color = Muted, fontSize = 12.sp)
+                }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -414,6 +429,9 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
             }
             isTelecom && telecomPrice.replace(',', '.').toDoubleOrNull() != null -> {
                 EstimatePanel(telecomTotal, "المبلغ المتوقع لاشتراكك", "السعر المدخل × $count أشهر + الإضافات. راجع عرضك قبل الدفع.")
+            }
+            isWater && estimate != null -> {
+                EstimatePanel(waterPayable, "المبلغ المتوقع للفاتورة", "قبل الطابع: %.2f دج • الطابع: %.2f دج • %s".format(estimate.total, waterStamp, if (paymentMethod == "CASH") "نقداً" else "إلكترونياً"))
             }
             estimate != null -> {
                 EstimatePanel(estimate.total, "المبلغ المتوقع للفاتورة", estimate.note)
