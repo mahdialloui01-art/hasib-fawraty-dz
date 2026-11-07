@@ -28,12 +28,10 @@ object AlgerianTariffs {
         val ht = energy + fixed
         val vat = (progressive(used, listOf(125.0, 250.0).map { it * months / 3.0 }, listOf(1.7787, 4.1789, 0.0)) * 0.09) +
                 (progressive(max(0.0, used - 250.0 * months / 3.0), listOf(750.0 * months / 3.0), listOf(4.8120, 5.4796)) * 0.19) + fixed * 0.09
-        // Do not invent the old radio-fee tiers here. The official bill's
-        // "Droit fixe sur consommation", housing tax, stamp and other bill lines
-        // vary by invoice and must be entered once in otherBillLinesTtc.
+        // Invoice-specific rights, housing tax, stamp and debts are entered once as TTC extras.
         val invoiceExtras = max(0.0, otherBillLinesTtc)
         return Estimate(used, ht, vat, 0.0, invoiceExtras, ht + vat + invoiceExtras,
-            "تقدير حسب تعريفة 54M المنزلية. لا نضيف رسماً ثابتاً افتراضياً؛ أدخل حقوق الاستهلاك وضريبة السكن والطابع والديون الظاهرة في فاتورتك مرة واحدة ضمن البنود الإضافية.")
+            "تقدير حسب تعريفة 54M المنزلية. أدخل الحقوق والرسوم والديون الظاهرة في الفاتورة مرة واحدة ضمن البنود الإضافية.")
     }
 
     fun gas(oldIndex: Double, newIndex: Double, pcs: Double, months: Int, otherBillLinesTtc: Double = 0.0): Estimate {
@@ -48,7 +46,8 @@ object AlgerianTariffs {
             "التحويل إلى حراريات باستعمال معامل PCS المدون في فاتورتك. لا يشمل الطابع والديون والرسوم الاستثنائية.")
     }
 
-    // Base rates are set by territorial tariff zone under Executive Decree 05-13.
+    // Base rates and quarterly progressive bands follow Executive Decree 05-13.
+    // El Tarf belongs to the Constantine tariff zone (Article 12).
     fun water(cubicMeters: Double, months: Int, zone: String, category: String, southLevyRate: Boolean = false, otherBillLinesTtc: Double = 0.0): Estimate {
         val m = max(0.0, cubicMeters)
         val (waterBase, sanitationBase) = when (zone) {
@@ -79,19 +78,20 @@ object AlgerianTariffs {
         val fixed = waterFixed + sanitationFixed
         val ht = water + sanitation + fixed
 
-        // LF 2022, Article 94 / CTCA Article 23: 9% applies to drinking water supplied to households.
-        // Other customers remain at the normal 19% rate. Sanitation is a separate service and is
-        // kept at the normal rate; fixed subscription amounts are split by water/sanitation service.
-        val waterVatRate = if (category == "HOME") 0.09 else 0.19
-        val vat = (water + waterFixed) * waterVatRate + (sanitation + sanitationFixed) * 0.19
+        // The supplied ADE household invoice applies 9% to the full combined HT
+        // assessment (water + sanitation + fixed subscription charges).
+        // Keep 19% for non-household estimates until an official matching invoice
+        // confirms the applicable tax base/rate for those customer categories.
+        val vatRate = if (category == "HOME") 0.09 else 0.19
+        val vat = ht * vatRate
 
-        // Water management levy: 3 DA per consumed m3. Resource-protection and water-economy levies:
-        // 4% each in the North, 2% each in the specifically listed Southern wilayas.
+        // The supplied invoice shows 3 DA/m3 management levy and two 4% levies
+        // calculated on drinking-water consumption only (not sanitation/fixed fees).
         val managementLevy = m * 3.0
         val resourceLevyRate = if (southLevyRate) 0.02 else 0.04
-        val resourceLevies = ht * resourceLevyRate * 2.0
+        val resourceLevies = water * resourceLevyRate * 2.0
         val levies = managementLevy + resourceLevies
         return Estimate(m, ht, vat, levies, max(0.0, otherBillLinesTtc), ht + vat + levies + max(0.0, otherBillLinesTtc),
-            "TVA: 9% على تزويد الماء للمنزلي فقط، و19% على التطهير وعلى خدمات/اشتراكات غير المنزلي، وفق قانون المالية 2022. يلزم مطابقة تفصيل TVA مع فاتورة الموزع.")
+            "للمنزلي: TVA بنسبة 9% على أساس HT الإجمالي كما في فاتورة ADE المرجعية. إتاوتا النوعية والاقتصاد محسوبتان على مبلغ استهلاك الماء فقط. الفئات الأخرى تحتاج مطابقة فاتورة.")
     }
 }
