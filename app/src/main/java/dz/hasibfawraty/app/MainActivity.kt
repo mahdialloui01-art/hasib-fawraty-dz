@@ -234,10 +234,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("اجمع البنود الإضافية كما تظهر في فاتورتك وأدخل مجموعها هنا؛ لا نخمّنها تلقائياً.", color = Gold, fontSize = 10.sp)
             }
             Spacer(Modifier.height(18.dp))
-            if (isTelecom && telecomPrice.isNotBlank()) {
-                EstimatePanel(telecomTotal, "حساب اشتراك تقريبي", "السعر المدخل × $count أشهر + الإضافات. تأكد من سعر العرض قبل الدفع.")
-            } else if (estimate != null) {
-                EstimatePanel(estimate.total, "المبلغ التقديري", estimate.note)
+            if (estimate != null) {
                 Spacer(Modifier.height(8.dp))
                 Text("تفصيل الحساب", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 Text("الاستهلاك: %.2f".format(estimate.consumption), color = Muted, fontSize = 12.sp)
@@ -245,10 +242,33 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("TVA: %.2f دج".format(estimate.vat), color = Muted, fontSize = 12.sp)
                 if (estimate.extra > 0) Text("الرسم الثابت على الاستهلاك: %.2f دج".format(estimate.extra), color = Muted, fontSize = 12.sp)
                 if (estimate.otherBillLines > 0) Text("باقي بنود الفاتورة المدخلة: %.2f دج".format(estimate.otherBillLines), color = Muted, fontSize = 12.sp)
-            } else {
-                Text("أدخل القراءات أو الاستهلاك لعرض الحساب.", color = Muted, fontSize = 12.sp)
             }
         }
+        Spacer(Modifier.height(10.dp))
+        when {
+            isTelecom && telecomPrice.replace(',', '.').toDoubleOrNull() != null -> {
+                EstimatePanel(telecomTotal, "المبلغ المتوقع لاشتراكك", "السعر المدخل × $count أشهر + الإضافات. راجع عرضك قبل الدفع.")
+            }
+            estimate != null -> {
+                EstimatePanel(estimate.total, "المبلغ المتوقع للفاتورة", estimate.note)
+            }
+            isTelecom -> {
+                ResultHint("النتيجة تظهر هنا", "أدخل سعر اشتراك Idoom لتظهر قيمة المبلغ المتوقع مباشرة.")
+            }
+            isGas && (a == null || b == null || factor.replace(',', '.').toDoubleOrNull() == null) -> {
+                ResultHint("النتيجة تظهر هنا", "أدخل المؤشرين القديم والجديد ومعامل PCS من الفاتورة.")
+            }
+            isElectric && (a == null || b == null) -> {
+                ResultHint("النتيجة تظهر هنا", "أدخل المؤشر القديم والجديد واضغط على القيم لتظهر النتيجة مباشرة.")
+            }
+            isWater && a == null -> {
+                ResultHint("النتيجة تظهر هنا", "أدخل استهلاك الماء بالمتر المكعب لتظهر قيمة الفاتورة المتوقعة.")
+            }
+            else -> {
+                ResultHint("تحقق من البيانات", "تأكد أن المؤشر الجديد أكبر من أو يساوي المؤشر القديم وأن القيم صحيحة.")
+            }
+        }
+        Spacer(Modifier.height(8.dp))
         Text("تنبيه: هذه حاسبة تقديرية وليست فاتورة رسمية. لا تشمل الديون السابقة أو الطابع أو كل الرسوم الخاصة.", color = Gold, fontSize = 10.sp)
         Spacer(Modifier.height(8.dp))
     }
@@ -266,6 +286,18 @@ private fun CalcField(label: String, value: String, onValue: (String) -> Unit) {
         ),
         shape = RoundedCornerShape(14.dp)
     )
+}
+
+@Composable
+private fun ResultHint(heading: String, note: String) {
+    Column(
+        Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(18.dp))
+            .padding(16.dp)
+    ) {
+        Text(heading, color = Green, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        Text(note, color = Muted, fontSize = 11.sp)
+    }
 }
 
 @Composable
