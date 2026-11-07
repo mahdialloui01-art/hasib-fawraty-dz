@@ -23,30 +23,57 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Configure optional Play upload signing
+      - name: Configure and validate optional Play upload signing
         env:
           KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        shell: bash
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
+          set -euo pipefail
+          values=("$KEYSTORE_BASE64" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD")
+          configured=0
+          missing=0
+          for value in "${values[@]}"; do
+            if [ -n "$value" ]; then configured=$((configured + 1)); else missing=$((missing + 1)); fi
+          done
+          if [ "$configured" -ne 0 ] && [ "$missing" -ne 0 ]; then
+            echo "::error::Signing secrets are incomplete. Configure all four PLAY_UPLOAD_* secrets or none."
+            exit 1
+          fi
+          if [ "$configured" -eq 4 ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/play-upload.jks"
+            keytool -list -keystore "$RUNNER_TEMP/play-upload.jks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
             echo "PLAY_UPLOAD_KEYSTORE_PATH=$RUNNER_TEMP/play-upload.jks" >> "$GITHUB_ENV"
+            echo "PLAY_UPLOAD_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "PLAY_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "PLAY_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "PLAY_SIGNING_CONFIGURED=true" >> "$GITHUB_ENV"
+            echo "Release signing configuration validated."
+          else
+            echo "PLAY_SIGNING_CONFIGURED=false" >> "$GITHUB_ENV"
+            echo "::warning::No upload signing secrets configured. A Play-ready signed AAB will not be published as an artifact."
           fi
       - name: Build and test
-        env:
-          PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}
-          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
-          PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
         run: |
           gradle testDebugUnitTest
           gradle assembleDebug
           gradle bundleRelease
+      - name: Verify signed Play App Bundle
+        if: env.PLAY_SIGNING_CONFIGURED == 'true'
+        run: |
+          set -euo pipefail
+          jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
+          echo "AAB signature verification completed."
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: hasib-fawraty-dz-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-      - name: Upload Play App Bundle
+      - name: Upload signed Play App Bundle
+        if: env.PLAY_SIGNING_CONFIGURED == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hasib-fawraty-dz-play-aab
+          name: hasib-fawraty-dz-signed-play-aab
           path: app/build/outputs/bundle/release/app-release.aab
