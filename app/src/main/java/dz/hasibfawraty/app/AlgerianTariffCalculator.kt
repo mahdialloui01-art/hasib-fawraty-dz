@@ -24,28 +24,51 @@ object AlgerianTariffs {
 
     private fun roundUpCent(value: Double): Double = ceil(value * 100.0 - 1e-9) / 100.0
 
-    fun electricity(oldIndex: Double, newIndex: Double, subscribedKw: Double, months: Int, otherBillLinesTtc: Double = 0.0): Estimate {
+    fun electricity(oldIndex: Double, newIndex: Double, subscribedKw: Double, months: Int, otherBillLinesTtc: Double = 0.0, household: Boolean = true): Estimate {
+        val period = months.coerceIn(1, 12) / 3.0
         val used = max(0.0, newIndex - oldIndex)
-        val energy = progressive(used, listOf(125.0, 250.0, 1000.0).map { it * months / 3.0 }, listOf(1.7787, 4.1789, 4.8120, 5.4796))
-        val fixed = max(0.0, subscribedKw) * 4.37 * months
-        val ht = energy + fixed
-        val vat = (progressive(used, listOf(125.0, 250.0).map { it * months / 3.0 }, listOf(1.7787, 4.1789, 0.0)) * 0.09) +
-                (progressive(max(0.0, used - 250.0 * months / 3.0), listOf(750.0 * months / 3.0), listOf(4.8120, 5.4796)) * 0.19) + fixed * 0.09
+        val lowBandLimit = (if (household) 250.0 else 250.0) * period
+        val middleBandLimit = 1000.0 * period
+        val limits = if (household) listOf(125.0, 250.0, 1000.0).map { it * period }
+                     else listOf(250.0, 1000.0).map { it * period }
+        val rates = if (household) listOf(1.7787, 4.1789, 4.8120, 5.4796)
+                    else listOf(4.1789, 4.8120, 5.4796)
+        val energy = progressive(used, limits, rates)
+        val fixed = max(0.0, subscribedKw) * 4.37 * months.coerceIn(1, 12)
+        val lowVatLimit = if (household) 250.0 * period else 250.0 * period
+        val lowRate = if (household) listOf(125.0, 250.0).map { it * period } else listOf(lowVatLimit)
+        val lowRates = if (household) listOf(1.7787, 4.1789) else listOf(4.1789)
+        val lowVatBase = progressive(used, lowRate, lowRates)
+        val highVatBase = if (household) {
+            progressive(max(0.0, used - lowVatLimit), listOf(750.0 * period), listOf(4.8120, 5.4796))
+        } else {
+            progressive(max(0.0, used - lowVatLimit), listOf(750.0 * period), listOf(4.8120, 5.4796))
+        }
+        val vat = lowVatBase * 0.09 + highVatBase * 0.19 + fixed * 0.09
         val invoiceExtras = max(0.0, otherBillLinesTtc)
-        return Estimate(used, ht, vat, 0.0, invoiceExtras, ht + vat + invoiceExtras,
-            "تقدير حسب تعريفة 54M المنزلية. أدخل الحقوق والرسوم والديون الظاهرة في الفاتورة مرة واحدة ضمن البنود الإضافية.")
+        return Estimate(used, energy + fixed, vat, 0.0, invoiceExtras, energy + fixed + vat + invoiceExtras,
+            if (household) "تعريفة 54M المنزلية." else "تعريفة 54NM لغير المنزلي. راجع تصنيف عقدك.")
     }
 
-    fun gas(oldIndex: Double, newIndex: Double, pcs: Double, months: Int, otherBillLinesTtc: Double = 0.0): Estimate {
+    fun gas(oldIndex: Double, newIndex: Double, pcs: Double, months: Int, otherBillLinesTtc: Double = 0.0, household: Boolean = true): Estimate {
+        val period = months.coerceIn(1, 12) / 3.0
         val cubic = max(0.0, newIndex - oldIndex)
         val thermies = cubic * max(0.0, pcs)
-        val energy = progressive(thermies, listOf(1125.0, 2500.0, 7500.0).map { it * months / 3.0 }, listOf(0.1682, 0.3245, 0.4025, 0.4599))
-        val fixed = 28.5 * months
-        val vat = (progressive(thermies, listOf(1125.0, 2500.0).map { it * months / 3.0 }, listOf(0.1682, 0.3245, 0.0)) * 0.09) +
-                (progressive(max(0.0, thermies - 2500.0 * months / 3.0), listOf(5000.0 * months / 3.0), listOf(0.4025, 0.4599)) * 0.19) + fixed * 0.09
-        val ht = energy + fixed
-        return Estimate(cubic, ht, vat, 0.0, max(0.0, otherBillLinesTtc), ht + vat + max(0.0, otherBillLinesTtc),
-            "التحويل إلى حراريات باستعمال معامل PCS المدون في فاتورتك. لا يشمل الطابع والديون والرسوم الاستثنائية.")
+        val limits = if (household) listOf(1125.0, 2500.0, 7500.0).map { it * period }
+                     else listOf(2500.0, 7500.0).map { it * period }
+        val rates = if (household) listOf(0.1682, 0.3245, 0.4025, 0.4599)
+                    else listOf(0.3245, 0.4025, 0.4599)
+        val energy = progressive(thermies, limits, rates)
+        val fixed = 28.5 * months.coerceIn(1, 12)
+        val lowLimit = 2500.0 * period
+        val lowRates = if (household) listOf(1125.0, 2500.0).map { it * period } else listOf(lowLimit)
+        val lowVatRates = if (household) listOf(0.1682, 0.3245) else listOf(0.3245)
+        val lowVatBase = progressive(thermies, lowRates, lowVatRates)
+        val highVatBase = progressive(max(0.0, thermies - lowLimit), listOf(5000.0 * period), listOf(0.4025, 0.4599))
+        val vat = lowVatBase * 0.09 + highVatBase * 0.19 + fixed * 0.09
+        val extras = max(0.0, otherBillLinesTtc)
+        return Estimate(cubic, energy + fixed, vat, 0.0, extras, energy + fixed + vat + extras,
+            if (household) "تعريفة 23M المنزلية. التحويل باستعمال PCS المدون في الفاتورة." else "تعريفة 23NM لغير المنزلي. التحويل باستعمال PCS المدون في الفاتورة.")
     }
 
     // Base rates and quarterly progressive bands follow Executive Decree 05-13.
