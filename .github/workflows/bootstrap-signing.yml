@@ -1,0 +1,73 @@
+name: Create Hasib Fawraty DZ signing key
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create-key:
+    name: Generate one-time signing package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to expose signing material from a public repository
+        if: github.event.repository.private != true
+        run: |
+          echo "::error::Make this repository private before generating a signing key. Public-repository artifacts may be accessible to anyone."
+          exit 1
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate independent signing package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p signing-package
+          STORE_PASSWORD="$(openssl rand -hex 24)"
+          KEY_PASSWORD="$STORE_PASSWORD"
+          KEY_ALIAS="hasibfawraty"
+          keytool -genkeypair -v \
+            -keystore signing-package/hasib-fawraty-upload.jks \
+            -storetype JKS \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Hasib Fawraty DZ, OU=Mobile, O=Hasib Fawraty DZ, L=Algeria, ST=Algeria, C=DZ"
+          base64 -w 0 signing-package/hasib-fawraty-upload.jks > signing-package/KEYSTORE_BASE64.txt
+          {
+            echo "STORE_PASSWORD=$STORE_PASSWORD"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+          } > signing-package/credentials.txt
+          cat > signing-package/README_AR.txt <<'EOF'
+          هذه حزمة توقيع خاصة بتطبيق حاسب فاتورتي DZ فقط.
+          لا تستعملها مع تطبيق رفيق مسلم أو أي تطبيق آخر.
+          
+          أضف محتوى KEYSTORE_BASE64.txt إلى GitHub Secret باسم:
+          PLAY_UPLOAD_KEYSTORE_BASE64
+          
+          أضف STORE_PASSWORD إلى:
+          PLAY_UPLOAD_KEYSTORE_PASSWORD
+          
+          أضف KEY_ALIAS إلى:
+          PLAY_UPLOAD_KEY_ALIAS
+          
+          أضف KEY_PASSWORD إلى:
+          PLAY_UPLOAD_KEY_PASSWORD
+          
+          لا تشارك هذه الملفات أو محتوياتها. احتفظ بنسخة احتياطية آمنة.
+          لا تحذف المفتاح بعد نشر التطبيق؛ ستحتاج إليه لتحديثات التطبيق.
+          EOF
+
+      - name: Upload private signing package
+        uses: actions/upload-artifact@v4
+        with:
+          name: hasib-fawraty-dz-signing-package
+          path: signing-package/
+          retention-days: 1
