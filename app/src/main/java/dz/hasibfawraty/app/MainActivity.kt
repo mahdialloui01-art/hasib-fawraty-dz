@@ -55,7 +55,7 @@ internal fun calculateHousingTax(months: Int, professional: Boolean, highRateAre
     return annual * months.coerceIn(1, 12) / 12.0
 }
 
-private fun calculateCashStamp(amountTtc: Double): Double {
+internal fun calculateCashStamp(amountTtc: Double): Double {
     if (amountTtc <= 300.0) return 0.0
     val ratePerHundred = when {
         amountTtc <= 30_000.0 -> 1.0
