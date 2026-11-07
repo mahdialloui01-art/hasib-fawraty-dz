@@ -210,7 +210,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 when {
                     isElectric -> "أدخل مؤشري العداد القديم والجديد (kWh)"
                     isGas -> "أدخل مؤشري عداد الغاز ومعامل PCS من الفاتورة"
-                    isWater -> "أدخل حجم الاستهلاك بالمتر المكعب (m³)"
+                    isWater -> "أدخل مؤشري العداد القديم والجديد (m³)"
                     else -> "أدخل سعر اشتراكك حسب العرض الحالي"
                 },
                 color = Green, fontWeight = FontWeight.Bold, fontSize = 14.sp
@@ -315,7 +315,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 ResultHint("النتيجة تظهر هنا", "أدخل المؤشر القديم والجديد واضغط على القيم لتظهر النتيجة مباشرة.")
             }
             isWater && (a == null || b == null) -> {
-                ResultHint("النتيجة تظهر هنا", "أدخل المؤشر القديم والجديد لعداد الماء، واختر الولاية ونوع الاشتراك.")
+                ResultHint("النتيجة تظهر هنا", "أدخل مؤشري العداد القديم والجديد، واختر الولاية ونوع الاشتراك لحساب الاستهلاك تلقائياً.")
             }
             else -> {
                 ResultHint("تحقق من البيانات", "تأكد أن المؤشر الجديد أكبر من أو يساوي المؤشر القديم وأن القيم صحيحة.")
