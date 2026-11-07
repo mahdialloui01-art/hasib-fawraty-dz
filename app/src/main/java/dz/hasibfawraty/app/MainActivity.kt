@@ -117,6 +117,8 @@ fun HasibApp() {
         BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
         BillCategory("اتصالات الجزائر", "Idoom • الإنترنت والهاتف الثابت", Icons.Default.Wifi, Color(0xFF9B8CFF))
     )
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val history = remember { mutableStateListOf<BillHistoryEntry>().apply { addAll(BillHistoryStore.load(context)) } }
     var selected by remember { mutableStateOf<BillCategory?>(null) }
     var search by remember { mutableStateOf("") }
     var tab by remember { mutableIntStateOf(0) }
@@ -139,8 +141,15 @@ fun HasibApp() {
         ) { padding ->
             if (tab == 3 && selected == null) {
                 SettingsScreen(contentPadding = padding)
+            } else if (tab == 1 && selected == null) {
+                BillHistoryScreen(padding, history, { e -> history.removeAll { it.id == e.id }; BillHistoryStore.save(context,history) }, { history.clear(); BillHistoryStore.save(context,history) })
+            } else if (tab == 2 && selected == null) {
+                StatisticsScreen(padding, history)
             } else if (selected != null) {
-                CategoryDetail(selected!!, contentPadding = padding, onBack = { selected = null })
+                CategoryDetail(selected!!, contentPadding = padding, onBack = { selected = null }, onSave = { name, amount, details ->
+                    history.add(0, BillHistoryEntry(UUID.randomUUID().toString(),name,amount,details,System.currentTimeMillis()))
+                    BillHistoryStore.save(context,history)
+                })
             } else {
                 Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
                     Spacer(Modifier.height(18.dp))
@@ -221,7 +230,7 @@ private fun CategoryCard(item: BillCategory, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, onBack: () -> Unit) {
+private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, onBack: () -> Unit, onSave: (String,Double,String) -> Unit) {
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
     var factor by remember { mutableStateOf("") }
