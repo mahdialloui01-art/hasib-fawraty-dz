@@ -36,7 +36,7 @@ private val Green = Color(0xFF20C997)
 private val Gold = Color(0xFFFFC857)
 private val Muted = Color(0xFF9EAFBD)
 
-private fun calculateConsumptionRight(electricKwh: Double): Double = when {
+internal fun calculateConsumptionRight(electricKwh: Double): Double = when {
     electricKwh > 390.0 -> 100.0
     electricKwh > 190.0 -> 50.0
     electricKwh > 70.0 -> 25.0
