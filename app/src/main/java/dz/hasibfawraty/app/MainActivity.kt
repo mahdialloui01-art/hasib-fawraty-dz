@@ -484,6 +484,24 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 ResultHint("تحقق من البيانات", "تأكد أن المؤشر الجديد أكبر من أو يساوي المؤشر القديم وأن القيم صحيحة.")
             }
         }
+        val saveAmount = when {
+            isSonelgaz && sonelgazReady -> sonelgazPayable
+            isWater && estimate != null -> waterPayable
+            isTelecom && telecomPrice.replace(',', '.').toDoubleOrNull() != null -> telecomTotal
+            else -> null
+        }
+        if (saveAmount != null) {
+            Button(onClick = {
+                val details = when {
+                    isSonelgaz -> "الكهرباء " + first + " → " + second + " kWh؛ الغاز " + gasFirst + " → " + gasSecond + "؛ PCS " + gasPcs + "؛ PMD " + kw + "؛ " + count + " أشهر"
+                    isWater -> "العداد " + first + " → " + second + " m³؛ الولاية " + waterWilaya + "؛ " + waterCategory + "؛ " + count + " أشهر"
+                    else -> "اشتراك " + telecomPrice + " دج؛ " + count + " أشهر؛ إضافات " + extra + " دج"
+                }
+                onSave(item.title,saveAmount,details)
+            }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor=Green,contentColor=Ink)) {
+                Icon(Icons.Default.Save,null); Spacer(Modifier.width(8.dp)); Text("حفظ الحساب في فواتيري")
+            }
+        }
         Spacer(Modifier.height(8.dp))
         Text(if (isSonelgaz) "تنبيه: هذه حاسبة تقديرية وليست فاتورة رسمية. الرسوم الأخرى يجب إدخالها كما تظهر في فاتورتك؛ الطابع النقدي يُحسب آلياً وفق قانون الطابع." else "تنبيه: هذه حاسبة تقديرية وليست فاتورة رسمية. قد لا تشمل الديون السابقة أو الرسوم الخاصة.", color = Gold, fontSize = 10.sp)
         Spacer(Modifier.height(8.dp))
