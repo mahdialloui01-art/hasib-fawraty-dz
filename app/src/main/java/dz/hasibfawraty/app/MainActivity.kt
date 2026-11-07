@@ -151,28 +151,125 @@ private fun CategoryCard(item: BillCategory, onClick: () -> Unit) {
 
 @Composable
 private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
-    var amount by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().padding(20.dp)) {
+    var first by remember { mutableStateOf("") }
+    var second by remember { mutableStateOf("") }
+    var factor by remember { mutableStateOf("9.5") }
+    var kw by remember { mutableStateOf("6") }
+    var months by remember { mutableStateOf("3") }
+    var telecomPrice by remember { mutableStateOf("") }
+    var extra by remember { mutableStateOf("0") }
+    val isElectric = item.title == "الكهرباء"
+    val isGas = item.title == "الغاز"
+    val isWater = item.title == "الماء"
+    val isTelecom = item.title == "اتصالات الجزائر"
+    val count = months.toIntOrNull()?.coerceIn(1, 12) ?: 3
+    val a = first.replace(',', '.').toDoubleOrNull()
+    val b = second.replace(',', '.').toDoubleOrNull()
+    val estimate = when {
+        isElectric && a != null && b != null && b >= a -> AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count)
+        isGas && a != null && b != null && b >= a -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 9.5, count)
+        isWater && a != null && a >= 0 -> AlgerianTariffs.water(a, count)
+        else -> null
+    }
+    val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
+            (extra.replace(',', '.').toDoubleOrNull() ?: 0.0)
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = Color.White) }
-            Text(item.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Column {
+                Text(item.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("حاسبة تقديرية بالتعريفة الجزائرية", color = Muted, fontSize = 11.sp)
+            }
         }
-        Spacer(Modifier.height(20.dp))
-        Text("إضافة فاتورة جديدة", color = Green, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text("سجّل المبلغ وتاريخ الاستحقاق للاحتفاظ بسجل مصاريفك.", color = Muted, fontSize = 12.sp)
-        Spacer(Modifier.height(20.dp))
-        OutlinedTextField(value = amount, onValueChange = { amount = it }, modifier = Modifier.fillMaxWidth(), label = { Text("المبلغ بالدينار الجزائري (دج)") }, singleLine = true)
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(value = date, onValueChange = { date = it }, modifier = Modifier.fillMaxWidth(), label = { Text("تاريخ الفاتورة / الاستحقاق") }, singleLine = true)
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(value = note, onValueChange = { note = it }, modifier = Modifier.fillMaxWidth(), label = { Text("ملاحظة أو رقم الفاتورة") }, minLines = 2)
-        Spacer(Modifier.height(18.dp))
-        Text("ملاحظة: هذه الواجهة تسجّل بيانات الفاتورة؛ الحساب الآلي للتعريفات الرسمية سيضاف في مرحلة الحسابات.", color = Gold, fontSize = 12.sp)
-        Spacer(Modifier.height(18.dp))
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(14.dp)) {
-            Text("حفظ مبدئي", color = Ink, fontWeight = FontWeight.Bold)
+        Column(Modifier.weight(1f).fillMaxWidth()) {
+            Text(
+                when {
+                    isElectric -> "أدخل مؤشري العداد القديم والجديد (kWh)"
+                    isGas -> "أدخل مؤشري عداد الغاز ومعامل PCS من الفاتورة"
+                    isWater -> "أدخل حجم الاستهلاك بالمتر المكعب (m³)"
+                    else -> "أدخل سعر اشتراكك حسب العرض الحالي"
+                },
+                color = Green, fontWeight = FontWeight.Bold, fontSize = 14.sp
+            )
+            Spacer(Modifier.height(12.dp))
+            if (isElectric || isGas) {
+                CalcField("المؤشر القديم", first) { first = it }
+                Spacer(Modifier.height(9.dp))
+                CalcField("المؤشر الجديد", second) { second = it }
+                if (isGas) {
+                    Spacer(Modifier.height(9.dp))
+                    CalcField("معامل PCS (من فاتورتك)", factor) { factor = it }
+                    Text("لا تستعمل معاملًا ثابتًا؛ أدخل قيمة PCS الظاهرة في فاتورتك.", color = Gold, fontSize = 11.sp)
+                } else {
+                    Spacer(Modifier.height(9.dp))
+                    Text("القدرة المتعاقد عليها (kW)", color = Muted, fontSize = 12.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("4", "6", "12", "20", "40").forEach { v ->
+                            FilterChip(selected = kw == v, onClick = { kw = v }, label = { Text(v) })
+                        }
+                    }
+                }
+            } else if (isWater) {
+                CalcField("الاستهلاك خلال الفترة (m³)", first) { first = it }
+                Text("التعريفة المنزلية محسوبة حسب شرائح الاستهلاك الفصلية، مع الماء والتطهير والاشتراك.", color = Muted, fontSize = 11.sp)
+            } else {
+                CalcField("سعر الاشتراك للفترة (دج)", telecomPrice) { telecomPrice = it }
+                CalcField("إضافات أو مستحقات أخرى (دج)", extra) { extra = it }
+                Text("اكتب سعر عرض Idoom الذي تشترك فيه كما يظهر في فضاء الزبون أو وصل الدفع؛ الأسعار تتغير حسب العرض.", color = Muted, fontSize = 11.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("مدة الفوترة بالأشهر", color = Muted, fontSize = 12.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("1", "2", "3", "6", "12").forEach { v ->
+                    FilterChip(selected = months == v, onClick = { months = v }, label = { Text(v) })
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            if (isTelecom && telecomPrice.isNotBlank()) {
+                EstimatePanel(telecomTotal, "حساب اشتراك تقريبي", "السعر المدخل × $count أشهر + الإضافات. تأكد من سعر العرض قبل الدفع.")
+            } else if (estimate != null) {
+                EstimatePanel(estimate.total, "المبلغ التقديري", estimate.note)
+                Spacer(Modifier.height(8.dp))
+                Text("تفصيل الحساب", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("الاستهلاك: %.2f".format(estimate.consumption), color = Muted, fontSize = 12.sp)
+                Text("المبلغ HT: %.2f دج".format(estimate.subtotalHt), color = Muted, fontSize = 12.sp)
+                Text("TVA: %.2f دج".format(estimate.vat), color = Muted, fontSize = 12.sp)
+                if (estimate.extra > 0) Text("رسوم إضافية: %.2f دج".format(estimate.extra), color = Muted, fontSize = 12.sp)
+            } else {
+                Text("أدخل القراءات أو الاستهلاك لعرض الحساب.", color = Muted, fontSize = 12.sp)
+            }
         }
+        Text("تنبيه: هذه حاسبة تقديرية وليست فاتورة رسمية. لا تشمل الديون السابقة أو الطابع أو كل الرسوم الخاصة.", color = Gold, fontSize = 10.sp)
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun CalcField(label: String, value: String, onValue: (String) -> Unit) {
+    OutlinedTextField(
+        value = value, onValueChange = onValue, modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) }, singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Green, unfocusedBorderColor = Color(0xFF344657),
+            focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+            focusedLabelColor = Green, unfocusedLabelColor = Muted, cursorColor = Green
+        ),
+        shape = RoundedCornerShape(14.dp)
+    )
+}
+
+@Composable
+private fun EstimatePanel(total: Double, heading: String, note: String) {
+    Column(
+        Modifier.fillMaxWidth().background(
+            Brush.linearGradient(listOf(Color(0xFF164C48), Color(0xFF1B3445))),
+            RoundedCornerShape(18.dp)
+        ).padding(16.dp)
+    ) {
+        Text(heading, color = Color(0xFFC5E8DF), fontSize = 12.sp)
+        Text("%.2f دج".format(total), color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
+        Text(note, color = Color.White.copy(alpha = .75f), fontSize = 10.sp)
     }
 }
