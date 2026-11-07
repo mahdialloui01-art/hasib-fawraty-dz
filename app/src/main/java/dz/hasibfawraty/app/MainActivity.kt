@@ -43,12 +43,14 @@ internal fun calculateConsumptionRight(electricKwh: Double): Double = when {
     else -> 0.0
 }
 
-private fun calculateHousingTax(months: Int, professional: Boolean, highRateArea: Boolean): Double {
+internal fun calculateHousingTax(months: Int, professional: Boolean, highRateArea: Boolean): Double {
+    // CREG: annual housing tax is 300/1200 DA in ordinary municipalities
+    // and 600/2400 DA in district capitals and the four specified wilayas.
     val annual = when {
-        professional && highRateArea -> 3200.0
-        professional -> 1600.0
-        highRateArea -> 800.0
-        else -> 400.0
+        professional && highRateArea -> 2400.0
+        professional -> 1200.0
+        highRateArea -> 600.0
+        else -> 300.0
     }
     return annual * months.coerceIn(1, 12) / 12.0
 }
