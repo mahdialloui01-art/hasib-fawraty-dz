@@ -190,7 +190,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     val estimate = when {
         isElectric && a != null && b != null && b >= a -> AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
         isGas && a != null && b != null && b >= a && (factor.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0.0 -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 0.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
-        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, count, waterTariffZone(waterWilaya), waterCategory, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
+        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, 3, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
         else -> null
     }
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
@@ -293,7 +293,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("الاستهلاك: %.2f".format(estimate.consumption), color = Muted, fontSize = 12.sp)
                 Text("المبلغ HT: %.2f دج".format(estimate.subtotalHt), color = Muted, fontSize = 12.sp)
                 Text("TVA: %.2f دج".format(estimate.vat), color = Muted, fontSize = 12.sp)
-                if (estimate.extra > 0) Text("الرسم الثابت على الاستهلاك: %.2f دج".format(estimate.extra), color = Muted, fontSize = 12.sp)
+                if (estimate.extra > 0) Text(if (isWater) "إتاوات الماء (التسيير وحماية النوعية واقتصاد الماء): %.2f دج".format(estimate.extra) else "الرسم الثابت على الاستهلاك: %.2f دج".format(estimate.extra), color = Muted, fontSize = 12.sp)
                 if (estimate.otherBillLines > 0) Text("باقي بنود الفاتورة المدخلة: %.2f دج".format(estimate.otherBillLines), color = Muted, fontSize = 12.sp)
             }
         }
