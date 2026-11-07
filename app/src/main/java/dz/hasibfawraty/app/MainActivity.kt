@@ -33,6 +33,17 @@ private val Green = Color(0xFF20C997)
 private val Gold = Color(0xFFFFC857)
 private val Muted = Color(0xFF9EAFBD)
 
+private fun calculateCashStamp(amountTtc: Double): Double {
+    if (amountTtc <= 300.0) return 0.0
+    val ratePerHundred = when {
+        amountTtc <= 30_000.0 -> 1.0
+        amountTtc <= 100_000.0 -> 1.5
+        else -> 2.0
+    }
+    val hundredDinarTranches = kotlin.math.ceil(amountTtc / 100.0)
+    return maxOf(5.0, hundredDinarTranches * ratePerHundred)
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -179,6 +190,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     var telecomPrice by remember { mutableStateOf("") }
     var extra by remember { mutableStateOf("0") }
     var otherBillLines by remember { mutableStateOf("0") }
+    var paymentMethod by remember { mutableStateOf("CASH") }
     var waterWilaya by remember { mutableStateOf("قسنطينة") }
     var waterMenuExpanded by remember { mutableStateOf(false) }
     var waterCategory by remember { mutableStateOf("HOME") }
@@ -205,6 +217,8 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     }
     val sonelgazTotal = (electricEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) +
         (gasEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) + invoiceExtras
+    val cashStamp = if (paymentMethod == "CASH" && sonelgazReady) calculateCashStamp(sonelgazTotal) else 0.0
+    val sonelgazPayable = sonelgazTotal + cashStamp
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
             (extra.replace(',', '.').toDoubleOrNull() ?: 0.0)
 
@@ -323,8 +337,17 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 }
             }
             if (!isTelecom) {
-                CalcField("الرسوم الأخرى TTC (حقوق الاستهلاك/ضريبة السكن/الطابع/ديون/خدمات)", otherBillLines) { otherBillLines = it }
-                Text("أدخل مجموع الرسوم الظاهرة في فاتورتك مرة واحدة فقط. لم نعد نضيف رسماً ثابتاً تلقائياً حتى لا يتكرر المبلغ.", color = Gold, fontSize = 10.sp)
+                CalcField(if (isSonelgaz) "الرسوم الأخرى TTC (حقوق الاستهلاك/ضريبة السكن/ديون/خدمات — دون الطابع)" else "الرسوم الأخرى TTC (حسب فاتورتك)", otherBillLines) { otherBillLines = it }
+                Text(if (isSonelgaz) "أدخل حقوق الاستهلاك وضريبة السكن والديون والخدمات فقط. الطابع النقدي يُحسب تلقائياً ولا تدخله هنا." else "أدخل مجموع الرسوم الظاهرة في فاتورتك مرة واحدة فقط.", color = Gold, fontSize = 10.sp)
+            }
+            if (isSonelgaz) {
+                Spacer(Modifier.height(10.dp))
+                Text("طريقة الدفع", color = Muted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = paymentMethod == "CASH", onClick = { paymentMethod = "CASH" }, label = { Text("نقداً") })
+                    FilterChip(selected = paymentMethod == "ELECTRONIC", onClick = { paymentMethod = "ELECTRONIC" }, label = { Text("إلكتروني") })
+                }
+                Text(if (paymentMethod == "CASH") "سيُضاف الطابع آلياً حسب شرائح المادة 100 من قانون الطابع." else "الدفع الإلكتروني معفى من طابع المخالصات.", color = Gold, fontSize = 10.sp)
             }
             Spacer(Modifier.height(18.dp))
             if (isSonelgaz && sonelgazReady) {
@@ -332,6 +355,8 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("الكهرباء: HT %.2f دج • TVA %.2f دج".format(electricEstimate!!.subtotalHt, electricEstimate.vat), color = Muted, fontSize = 12.sp)
                 Text("الغاز: HT %.2f دج • TVA %.2f دج".format(gasEstimate!!.subtotalHt, gasEstimate.vat), color = Muted, fontSize = 12.sp)
                 Text("الرسوم الأخرى المدخلة مرة واحدة: %.2f دج".format(invoiceExtras), color = Muted, fontSize = 12.sp)
+                Text("الصافي TTC قبل الطابع: %.2f دج".format(sonelgazTotal), color = Muted, fontSize = 12.sp)
+                Text("الطابع النقدي: %.2f دج".format(cashStamp), color = Muted, fontSize = 12.sp)
             }
             if (estimate != null) {
                 Spacer(Modifier.height(8.dp))
@@ -346,7 +371,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
         Spacer(Modifier.height(10.dp))
         when {
             isSonelgaz && sonelgazReady -> {
-                EstimatePanel(sonelgazTotal, "إجمالي فاتورة سونلغاز (الكهرباء + الغاز)", "مجموع HT وTVA للكهرباء والغاز، مع الرسوم التي أدخلتها مرة واحدة.")
+                EstimatePanel(sonelgazPayable, "المبلغ النهائي للدفع (الكهرباء + الغاز)", "الصافي TTC: %.2f دج • الطابع: %.2f دج • %s".format(sonelgazTotal, cashStamp, if (paymentMethod == "CASH") "نقداً" else "إلكترونياً"))
             }
             isSonelgaz -> {
                 ResultHint("فاتورة سونلغاز الموحدة", "أدخل مؤشري الكهرباء ومؤشري الغاز ومعامل PCS والقدرة PMD لإظهار المجموع.")
@@ -368,7 +393,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("تنبيه: هذه حاسبة تقديرية وليست فاتورة رسمية. لا تشمل الديون السابقة أو الطابع أو كل الرسوم الخاصة.", color = Gold, fontSize = 10.sp)
+        Text(if (isSonelgaz) "تنبيه: هذه حاسبة تقديرية وليست فاتورة رسمية. الرسوم الأخرى يجب إدخالها كما تظهر في فاتورتك؛ الطابع النقدي يُحسب آلياً وفق قانون الطابع." else "تنبيه: هذه حاسبة تقديرية وليست فاتورة رسمية. قد لا تشمل الديون السابقة أو الرسوم الخاصة.", color = Gold, fontSize = 10.sp)
         Spacer(Modifier.height(8.dp))
     }
 }
