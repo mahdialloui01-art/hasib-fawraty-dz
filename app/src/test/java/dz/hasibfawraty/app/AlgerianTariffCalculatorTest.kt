@@ -33,4 +33,18 @@ class AlgerianTariffCalculatorTest {
         val estimate = AlgerianTariffs.electricity(120.0, 100.0, 6.0, 3)
         assertEquals(0.0, estimate.consumption, 0.001)
     }
+    @Test
+    fun nonHouseholdElectricityUsesNonHouseholdFirstBand() {
+        val estimate = AlgerianTariffs.electricity(0.0, 250.0, 6.0, 3, household = false)
+        assertEquals(250.0 * 4.1789 + 6.0 * 4.37 * 3.0, estimate.subtotalHt, 0.001)
+        assertEquals(250.0 * 4.1789 * 0.09 + 6.0 * 4.37 * 3.0 * 0.09, estimate.vat, 0.001)
+    }
+
+    @Test
+    fun nonHouseholdGasUsesNonHouseholdFirstBand() {
+        val estimate = AlgerianTariffs.gas(0.0, 2500.0, 1.0, 3, household = false)
+        assertEquals(2500.0 * 0.3245 + 28.5 * 3.0, estimate.subtotalHt, 0.001)
+        assertEquals(2500.0 * 0.3245 * 0.09 + 28.5 * 3.0 * 0.09, estimate.vat, 0.001)
+    }
+
 }
