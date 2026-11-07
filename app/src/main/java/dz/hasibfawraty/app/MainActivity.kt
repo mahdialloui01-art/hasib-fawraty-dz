@@ -61,8 +61,7 @@ private fun waterZoneLabel(zone: String): String = when (zone) {
 @Composable
 fun HasibApp() {
     val categories = listOf(
-        BillCategory("الكهرباء", "سونلغاز • استهلاك الكهرباء", Icons.Default.Bolt, Color(0xFFFFC857)),
-        BillCategory("الغاز", "سونلغاز • استهلاك الغاز", Icons.Default.LocalFireDepartment, Color(0xFFFF8E72)),
+        BillCategory("سونلغاز", "فاتورة موحدة • الكهرباء والغاز", Icons.Default.Bolt, Color(0xFFFFC857)),
         BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
         BillCategory("اتصالات الجزائر", "Idoom • الإنترنت والهاتف الثابت", Icons.Default.Wifi, Color(0xFF9B8CFF))
     )
@@ -172,6 +171,9 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
     var factor by remember { mutableStateOf("") }
+    var gasFirst by remember { mutableStateOf("") }
+    var gasSecond by remember { mutableStateOf("") }
+    var gasPcs by remember { mutableStateOf("") }
     var kw by remember { mutableStateOf("6") }
     var months by remember { mutableStateOf("3") }
     var telecomPrice by remember { mutableStateOf("") }
@@ -180,19 +182,29 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     var waterWilaya by remember { mutableStateOf("قسنطينة") }
     var waterMenuExpanded by remember { mutableStateOf(false) }
     var waterCategory by remember { mutableStateOf("HOME") }
-    val isElectric = item.title == "الكهرباء"
-    val isGas = item.title == "الغاز"
+    val isSonelgaz = item.title == "سونلغاز"
+    val isElectric = false
+    val isGas = false
     val isWater = item.title == "الماء"
     val isTelecom = item.title == "اتصالات الجزائر"
     val count = months.toIntOrNull()?.coerceIn(1, 12) ?: 3
     val a = first.replace(',', '.').toDoubleOrNull()
     val b = second.replace(',', '.').toDoubleOrNull()
+    val gasA = gasFirst.replace(',', '.').toDoubleOrNull()
+    val gasB = gasSecond.replace(',', '.').toDoubleOrNull()
+    val pcsValue = gasPcs.replace(',', '.').toDoubleOrNull()
+    val invoiceExtras = otherBillLines.replace(',', '.').toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
+    val electricEstimate = if (isSonelgaz && a != null && b != null && b >= a)
+        AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, 0.0) else null
+    val gasEstimate = if (isSonelgaz && gasA != null && gasB != null && gasB >= gasA && (pcsValue ?: 0.0) > 0.0)
+        AlgerianTariffs.gas(gasA, gasB, pcsValue!!, count, 0.0) else null
+    val sonelgazReady = isSonelgaz && electricEstimate != null && gasEstimate != null
     val estimate = when {
-        isElectric && a != null && b != null && b >= a -> AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
-        isGas && a != null && b != null && b >= a && (factor.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0.0 -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 0.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
-        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, 3, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
+        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, 3, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), invoiceExtras)
         else -> null
     }
+    val sonelgazTotal = (electricEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) +
+        (gasEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) + invoiceExtras
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
             (extra.replace(',', '.').toDoubleOrNull() ?: 0.0)
 
@@ -208,15 +220,43 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
             Text(
                 when {
-                    isElectric -> "أدخل مؤشري العداد القديم والجديد (kWh)"
-                    isGas -> "أدخل مؤشري عداد الغاز ومعامل PCS من الفاتورة"
+                    isSonelgaz -> "فاتورة سونلغاز الموحدة: الكهرباء + الغاز"
                     isWater -> "أدخل مؤشري العداد القديم والجديد (m³)"
                     else -> "أدخل سعر اشتراكك حسب العرض الحالي"
                 },
                 color = Green, fontWeight = FontWeight.Bold, fontSize = 14.sp
             )
             Spacer(Modifier.height(12.dp))
-            if (isElectric || isGas) {
+            if (isSonelgaz) {
+                Text("أولاً: الكهرباء", color = Gold, fontWeight = FontWeight.Bold)
+                CalcField("مؤشر الكهرباء القديم (kWh)", first) { first = it }
+                Spacer(Modifier.height(9.dp))
+                CalcField("مؤشر الكهرباء الجديد (kWh)", second) { second = it }
+                Spacer(Modifier.height(12.dp))
+                Text("ثانياً: الغاز", color = Gold, fontWeight = FontWeight.Bold)
+                CalcField("مؤشر الغاز القديم", gasFirst) { gasFirst = it }
+                Spacer(Modifier.height(9.dp))
+                CalcField("مؤشر الغاز الجديد", gasSecond) { gasSecond = it }
+                Spacer(Modifier.height(9.dp))
+                CalcField("معامل PCS من الفاتورة", gasPcs) { gasPcs = it }
+                Text("أدخل معامل PCS كما هو مكتوب في فاتورتك.", color = Gold, fontSize = 11.sp)
+                Spacer(Modifier.height(10.dp))
+                Text("القدرة المتعاقد عليها للكهرباء (PMD)", color = Muted, fontSize = 12.sp)
+                Text("أحادي الطور 220V", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("4", "6", "12").forEach { v ->
+                        FilterChip(selected = kw == v, onClick = { kw = v }, label = { Text("$v kW") })
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text("ثلاثي الطور 380V", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("20", "40", "60", "80").forEach { v ->
+                        FilterChip(selected = kw == v, onClick = { kw = v }, label = { Text("$v kW") })
+                    }
+                }
+                Text("اختر PMD المطابقة لخانة القدرة في الفاتورة.", color = Gold, fontSize = 10.sp)
+            } else if (isElectric || isGas) {
                 CalcField("المؤشر القديم", first) { first = it }
                 Spacer(Modifier.height(9.dp))
                 CalcField("المؤشر الجديد", second) { second = it }
@@ -287,6 +327,12 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("أدخل مجموع الرسوم الظاهرة في فاتورتك مرة واحدة فقط. لم نعد نضيف رسماً ثابتاً تلقائياً حتى لا يتكرر المبلغ.", color = Gold, fontSize = 10.sp)
             }
             Spacer(Modifier.height(18.dp))
+            if (isSonelgaz && sonelgazReady) {
+                Text("تفصيل فاتورة سونلغاز الموحدة", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("الكهرباء: HT %.2f دج • TVA %.2f دج".format(electricEstimate!!.subtotalHt, electricEstimate.vat), color = Muted, fontSize = 12.sp)
+                Text("الغاز: HT %.2f دج • TVA %.2f دج".format(gasEstimate!!.subtotalHt, gasEstimate.vat), color = Muted, fontSize = 12.sp)
+                Text("الرسوم الأخرى المدخلة مرة واحدة: %.2f دج".format(invoiceExtras), color = Muted, fontSize = 12.sp)
+            }
             if (estimate != null) {
                 Spacer(Modifier.height(8.dp))
                 Text("تفصيل الحساب", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -299,6 +345,12 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
         }
         Spacer(Modifier.height(10.dp))
         when {
+            isSonelgaz && sonelgazReady -> {
+                EstimatePanel(sonelgazTotal, "إجمالي فاتورة سونلغاز (الكهرباء + الغاز)", "مجموع HT وTVA للكهرباء والغاز، مع الرسوم التي أدخلتها مرة واحدة.")
+            }
+            isSonelgaz -> {
+                ResultHint("فاتورة سونلغاز الموحدة", "أدخل مؤشري الكهرباء ومؤشري الغاز ومعامل PCS والقدرة PMD لإظهار المجموع.")
+            }
             isTelecom && telecomPrice.replace(',', '.').toDoubleOrNull() != null -> {
                 EstimatePanel(telecomTotal, "المبلغ المتوقع لاشتراكك", "السعر المدخل × $count أشهر + الإضافات. راجع عرضك قبل الدفع.")
             }
@@ -307,12 +359,6 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
             }
             isTelecom -> {
                 ResultHint("النتيجة تظهر هنا", "أدخل سعر اشتراك Idoom لتظهر قيمة المبلغ المتوقع مباشرة.")
-            }
-            isGas && (a == null || b == null || factor.replace(',', '.').toDoubleOrNull() == null) -> {
-                ResultHint("النتيجة تظهر هنا", "أدخل المؤشرين القديم والجديد ومعامل PCS من الفاتورة.")
-            }
-            isElectric && (a == null || b == null) -> {
-                ResultHint("النتيجة تظهر هنا", "أدخل المؤشر القديم والجديد واضغط على القيم لتظهر النتيجة مباشرة.")
             }
             isWater && (a == null || b == null) -> {
                 ResultHint("النتيجة تظهر هنا", "أدخل مؤشري العداد القديم والجديد، واختر الولاية ونوع الاشتراك لحساب الاستهلاك تلقائياً.")
