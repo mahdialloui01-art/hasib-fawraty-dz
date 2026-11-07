@@ -1,5 +1,6 @@
 package dz.hasibfawraty.app
 
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 
@@ -21,6 +22,8 @@ object AlgerianTariffs {
         return sum
     }
 
+    private fun roundUpCent(value: Double): Double = ceil(value * 100.0 - 1e-9) / 100.0
+
     fun electricity(oldIndex: Double, newIndex: Double, subscribedKw: Double, months: Int, otherBillLinesTtc: Double = 0.0): Estimate {
         val used = max(0.0, newIndex - oldIndex)
         val energy = progressive(used, listOf(125.0, 250.0, 1000.0).map { it * months / 3.0 }, listOf(1.7787, 4.1789, 4.8120, 5.4796))
@@ -28,7 +31,6 @@ object AlgerianTariffs {
         val ht = energy + fixed
         val vat = (progressive(used, listOf(125.0, 250.0).map { it * months / 3.0 }, listOf(1.7787, 4.1789, 0.0)) * 0.09) +
                 (progressive(max(0.0, used - 250.0 * months / 3.0), listOf(750.0 * months / 3.0), listOf(4.8120, 5.4796)) * 0.19) + fixed * 0.09
-        // Invoice-specific rights, housing tax, stamp and debts are entered once as TTC extras.
         val invoiceExtras = max(0.0, otherBillLinesTtc)
         return Estimate(used, ht, vat, 0.0, invoiceExtras, ht + vat + invoiceExtras,
             "تقدير حسب تعريفة 54M المنزلية. أدخل الحقوق والرسوم والديون الظاهرة في الفاتورة مرة واحدة ضمن البنود الإضافية.")
@@ -53,7 +55,7 @@ object AlgerianTariffs {
         val (waterBase, sanitationBase) = when (zone) {
             "CHLEF" -> 6.10 to 2.20
             "OUARGLA" -> 5.80 to 2.10
-            else -> 6.30 to 2.35 // Alger, Oran and Constantine
+            else -> 6.30 to 2.35
         }
         val multiplier = when (category) {
             "ADMIN" -> 5.5
@@ -75,23 +77,21 @@ object AlgerianTariffs {
         }
         val waterFixed = waterFixedPerQuarter * months / 3.0
         val sanitationFixed = sanitationFixedPerQuarter * months / 3.0
-        val fixed = waterFixed + sanitationFixed
-        val ht = water + sanitation + fixed
+        val ht = water + sanitation + waterFixed + sanitationFixed
 
-        // The supplied ADE household invoice applies 9% to the full combined HT
-        // assessment (water + sanitation + fixed subscription charges).
-        // Keep 19% for non-household estimates until an official matching invoice
-        // confirms the applicable tax base/rate for those customer categories.
+        // ADE reference invoice: 9% on the combined household HT base.
+        // Non-household tax treatment remains provisional pending matching invoices.
         val vatRate = if (category == "HOME") 0.09 else 0.19
-        val vat = ht * vatRate
+        val vat = roundUpCent(ht * vatRate)
 
-        // The supplied invoice shows 3 DA/m3 management levy and two 4% levies
-        // calculated on drinking-water consumption only (not sanitation/fixed fees).
-        val managementLevy = m * 3.0
+        // The invoice assesses management at 3 DA/m3 and each resource levy
+        // at 4% of drinking-water consumption (2% in the listed southern wilayas).
+        val managementLevy = roundUpCent(m * 3.0)
         val resourceLevyRate = if (southLevyRate) 0.02 else 0.04
-        val resourceLevies = water * resourceLevyRate * 2.0
-        val levies = managementLevy + resourceLevies
+        val qualityLevy = roundUpCent(water * resourceLevyRate)
+        val economyLevy = roundUpCent(water * resourceLevyRate)
+        val levies = managementLevy + qualityLevy + economyLevy
         return Estimate(m, ht, vat, levies, max(0.0, otherBillLinesTtc), ht + vat + levies + max(0.0, otherBillLinesTtc),
-            "للمنزلي: TVA بنسبة 9% على أساس HT الإجمالي كما في فاتورة ADE المرجعية. إتاوتا النوعية والاقتصاد محسوبتان على مبلغ استهلاك الماء فقط. الفئات الأخرى تحتاج مطابقة فاتورة.")
+            "للمنزلي: TVA بنسبة 9% على أساس HT الإجمالي وفق فاتورة ADE المرجعية. إتاوتا النوعية والاقتصاد محسوبتان كل واحدة على مبلغ استهلاك الماء فقط. الفئات الأخرى تحتاج مطابقة فاتورة.")
     }
 }
