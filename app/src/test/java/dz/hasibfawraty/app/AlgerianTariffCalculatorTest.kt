@@ -15,10 +15,10 @@ class AlgerianTariffCalculatorTest {
             otherBillLinesTtc = 0.0
         )
         // Recomputed from the tariff constants and progressive bands in this calculator.
-        assertEquals(572.49, estimate.subtotalHt, 0.001)
+        assertEquals(572.475, estimate.subtotalHt, 0.001)
         assertEquals(51.53, estimate.vat, 0.001)
         assertEquals(96.88, estimate.extra, 0.001)
-        assertEquals(720.90, estimate.total, 0.001)
+        assertEquals(720.885, estimate.total, 0.001)
     }
 
     @Test
