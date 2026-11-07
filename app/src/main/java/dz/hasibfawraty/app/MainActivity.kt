@@ -283,8 +283,8 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 }
             }
             if (!isTelecom) {
-                CalcField("باقي بنود الفاتورة TTC (ضريبة السكن/خدمات/ديون/REPE/RGPE/طابع)", otherBillLines) { otherBillLines = it }
-                Text("اجمع البنود الإضافية كما تظهر في فاتورتك وأدخل مجموعها هنا؛ لا نخمّنها تلقائياً.", color = Gold, fontSize = 10.sp)
+                CalcField("الرسوم الأخرى TTC (حقوق الاستهلاك/ضريبة السكن/الطابع/ديون/خدمات)", otherBillLines) { otherBillLines = it }
+                Text("أدخل مجموع الرسوم الظاهرة في فاتورتك مرة واحدة فقط. لم نعد نضيف رسماً ثابتاً تلقائياً حتى لا يتكرر المبلغ.", color = Gold, fontSize = 10.sp)
             }
             Spacer(Modifier.height(18.dp))
             if (estimate != null) {
