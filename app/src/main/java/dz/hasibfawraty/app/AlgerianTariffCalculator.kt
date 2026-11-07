@@ -27,8 +27,6 @@ object AlgerianTariffs {
     fun electricity(oldIndex: Double, newIndex: Double, subscribedKw: Double, months: Int, otherBillLinesTtc: Double = 0.0, household: Boolean = true): Estimate {
         val period = months.coerceIn(1, 12) / 3.0
         val used = max(0.0, newIndex - oldIndex)
-        val lowBandLimit = (if (household) 250.0 else 250.0) * period
-        val middleBandLimit = 1000.0 * period
         val limits = if (household) listOf(125.0, 250.0, 1000.0).map { it * period }
                      else listOf(250.0, 1000.0).map { it * period }
         val rates = if (household) listOf(1.7787, 4.1789, 4.8120, 5.4796)
