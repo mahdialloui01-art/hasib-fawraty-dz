@@ -627,3 +627,60 @@ private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onCl
         Icon(Icons.Default.ChevronLeft, null, tint = Muted)
     }
 }
+
+@Composable
+private fun BillHistoryScreen(p:PaddingValues, entries:List<BillHistoryEntry>, onDelete:(BillHistoryEntry)->Unit, onDeleteAll:()->Unit) {
+ var ask by remember { mutableStateOf(false) }
+ Column(Modifier.fillMaxSize().padding(p).padding(16.dp)) {
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
+   Column { Text("فواتيري السابقة",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold); Text(entries.size.toString()+" حساب محفوظ على الهاتف",color=Muted,fontSize=12.sp) }
+   if(entries.isNotEmpty()) TextButton(onClick={ask=true}) { Text("حذف الكل",color=Color(0xFFFF8A80)) }
+  }
+  Spacer(Modifier.height(12.dp))
+  if(entries.isEmpty()) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
+   Column(horizontalAlignment=Alignment.CenterHorizontally) {
+    Icon(Icons.Default.ReceiptLong,null,tint=Muted,modifier=Modifier.size(48.dp))
+    Text("لا توجد حسابات محفوظة",color=Color.White,fontWeight=FontWeight.Bold)
+    Text("بعد الحساب اضغط حفظ الحساب في فواتيري.",color=Muted,fontSize=12.sp)
+   }
+  } else androidx.compose.foundation.lazy.LazyColumn(verticalArrangement=Arrangement.spacedBy(9.dp)) {
+   items(entries,key={it.id}) { e ->
+    Column(Modifier.fillMaxWidth().background(Panel,RoundedCornerShape(16.dp)).padding(14.dp)) {
+     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+      Text(e.category,color=Green,fontWeight=FontWeight.Bold)
+      Text(SimpleDateFormat("yyyy/MM/dd HH:mm",Locale.getDefault()).format(Date(e.createdAt)),color=Muted,fontSize=10.sp)
+     }
+     Text(String.format(Locale.getDefault(),"%.2f دج",e.amount),color=Color.White,fontSize=22.sp,fontWeight=FontWeight.ExtraBold)
+     Text(e.details,color=Muted,fontSize=11.sp)
+     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
+      TextButton(onClick={onDelete(e)}) { Icon(Icons.Default.Delete,null,tint=Color(0xFFFF8A80)); Text("حذف",color=Color(0xFFFF8A80)) }
+     }
+    }
+   }
+  }
+ }
+ if(ask) AlertDialog(onDismissRequest={ask=false},title={Text("حذف كل الفواتير؟")},text={Text("لن تتمكن من استرجاع الحسابات بعد حذفها.")},
+  confirmButton={TextButton(onClick={onDeleteAll();ask=false}){Text("حذف الكل",color=Color(0xFFFF8A80))}},
+  dismissButton={TextButton(onClick={ask=false}){Text("إلغاء")}})
+}
+@Composable
+private fun StatisticsScreen(p:PaddingValues,entries:List<BillHistoryEntry>) {
+ val total=entries.sumOf{it.amount}
+ Column(Modifier.fillMaxSize().padding(p).padding(18.dp).verticalScroll(rememberScrollState())) {
+  Text("إحصائيات فواتيرك",color=Color.White,fontSize=23.sp,fontWeight=FontWeight.Bold)
+  Text("مبنية على الحسابات المحفوظة",color=Muted,fontSize=12.sp)
+  Spacer(Modifier.height(16.dp))
+  Column(Modifier.fillMaxWidth().background(Panel,RoundedCornerShape(18.dp)).padding(16.dp)) {
+   Text("مجموع الحسابات",color=Muted,fontSize=12.sp)
+   Text(String.format(Locale.getDefault(),"%.2f دج",total),color=Green,fontSize=27.sp,fontWeight=FontWeight.ExtraBold)
+   Text(entries.size.toString()+" حساب",color=Muted,fontSize=11.sp)
+  }
+  entries.groupBy{it.category}.forEach { (name,list) ->
+   Spacer(Modifier.height(8.dp))
+   Row(Modifier.fillMaxWidth().background(Panel,RoundedCornerShape(14.dp)).padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween) {
+    Text(name,color=Color.White,fontWeight=FontWeight.Bold)
+    Text(String.format(Locale.getDefault(),"%.2f دج",list.sumOf{it.amount}),color=Gold,fontWeight=FontWeight.Bold)
+   }
+  }
+ }
+}
