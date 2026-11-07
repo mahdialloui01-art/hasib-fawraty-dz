@@ -254,7 +254,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                         Icon(Icons.Default.ArrowDropDown, null, tint = Green)
                     }
                     DropdownMenu(expanded = waterMenuExpanded, onDismissRequest = { waterMenuExpanded = false }) {
-                        listOf("أدرار", "الشلف", "الأغواط", "أم البواقي", "باتنة", "بجاية", "بسكرة", "بشار", "البليدة", "البويرة", "تمنراست", "تبسة", "تلمسان", "تيارت", "تيزي وزو", "الجزائر", "الجلفة", "جيجل", "سطيف", "سعيدة", "سكيكدة", "سيدي بلعباس", "عنابة", "قالمة", "قسنطينة", "المدية", "مستغانم", "المسيلة", "معسكر", "ورقلة", "وهران", "البيض", "إليزي", "برج بوعريريج", "بومرداس", "الطارف", "تندوف", "تيسمسيلت", "الوادي", "خنشلة", "سوق أهراس", "تيبازة", "ميلة", "عين الدفلى", "النعامة", "عين تموشنت", "غرداية", "غليزان", "تيميمون", "برج باجي مختار", "أولاد جلال", "بني عباس", "عين صالح", "عين قزام", "تقرت", "جانت", "المغير", "المنيعة").forEach { wilaya ->
+                        listOf("أدرار", "عين الدفلى", "عنابة", "باتنة", "بشار", "بجاية", "سيدي بلعباس", "بسكرة", "البليدة", "برج بوعريريج", "البويرة", "بومرداس", "الشلف", "قسنطينة", "الجلفة", "البيض", "الوادي", "الطارف", "غرداية", "قالمة", "إليزي", "جيجل", "خنشلة", "الأغواط", "معسكر", "المدية", "ميلة", "مستغانم", "المسيلة", "النعامة", "وهران", "ورقلة", "أم البواقي", "غليزان", "سعيدة", "سطيف", "سكيكدة", "سوق أهراس", "تمنراست", "عين تموشنت", "تيارت", "تندوف", "تيبازة", "تيسمسيلت", "تيزي وزو", "تلمسان").forEach { wilaya ->
                             DropdownMenuItem(text = { Text(wilaya) }, onClick = { waterWilaya = wilaya; waterMenuExpanded = false })
                         }
                     }
@@ -274,10 +274,12 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("اكتب سعر عرض Idoom الذي تشترك فيه كما يظهر في فضاء الزبون أو وصل الدفع؛ الأسعار تتغير حسب العرض.", color = Muted, fontSize = 11.sp)
             }
             Spacer(Modifier.height(12.dp))
-            Text("مدة الفوترة بالأشهر", color = Muted, fontSize = 12.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("1", "2", "3", "6", "12").forEach { v ->
-                    FilterChip(selected = months == v, onClick = { months = v }, label = { Text(v) })
+            if (!isWater) {
+                Text("مدة الفوترة بالأشهر", color = Muted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("1", "2", "3", "6", "12").forEach { v ->
+                        FilterChip(selected = months == v, onClick = { months = v }, label = { Text(v) })
+                    }
                 }
             }
             if (!isTelecom) {
