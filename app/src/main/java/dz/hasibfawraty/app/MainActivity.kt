@@ -248,7 +248,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     val housingTax = if (isSonelgaz) calculateHousingTax(count, premisesType == "PRO", housingArea == "HIGH") else 0.0
     val sonelgazReady = isSonelgaz && electricEstimate != null && gasEstimate != null
     val estimate = when {
-        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, 3, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), invoiceExtras)
+        isWater && a != null && b != null && b >= a -> AlgerianTariffs.water(b - a, count, waterTariffZone(waterWilaya), waterCategory, waterWilaya in listOf("الأغواط", "غرداية", "الوادي", "تندوف", "بشار", "إليزي", "تمنراست", "أدرار", "بسكرة", "ورقلة"), invoiceExtras)
         else -> null
     }
     val sonelgazTotal = (electricEstimate?.let { it.subtotalHt + it.vat } ?: 0.0) +
@@ -366,7 +366,7 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
                 Text("اكتب سعر عرض Idoom الذي تشترك فيه كما يظهر في فضاء الزبون أو وصل الدفع؛ الأسعار تتغير حسب العرض.", color = Muted, fontSize = 11.sp)
             }
             Spacer(Modifier.height(12.dp))
-            if (!isWater) {
+            if (isSonelgaz || isWater) {
                 Text("مدة الفوترة بالأشهر", color = Muted, fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("1", "2", "3", "6", "12").forEach { v ->
