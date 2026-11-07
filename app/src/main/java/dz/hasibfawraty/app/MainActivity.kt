@@ -43,24 +43,10 @@ data class BillCategory(val title: String, val subtitle: String, val icon: Image
 @Composable
 fun HasibApp() {
     val categories = listOf(
-        BillCategory("سونلغاز", "فاتورة الكهرباء والغاز", Icons.Default.Bolt, Color(0xFFFFC857)),
-        BillCategory("ADE", "الجزائرية للمياه", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
-        BillCategory("SEATA", "مياه عنابة والطارف", Icons.Default.WaterDrop, Color(0xFF42C4E8)),
-        BillCategory("SEAAL", "مياه الجزائر وتيبازة", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
-        BillCategory("SEACO", "مياه قسنطينة", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
-        BillCategory("SEOR", "مياه وهران", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
-        BillCategory("اتصالات الجزائر", "Idoom • الهاتف والإنترنت", Icons.Default.Wifi, Color(0xFF9B8CFF)),
-        BillCategory("موبيليس", "الهاتف النقال والإنترنت", Icons.Default.Smartphone, Color(0xFF58D6A5)),
-        BillCategory("جازي Djezzy", "الهاتف النقال والإنترنت", Icons.Default.Smartphone, Color(0xFFFF8E72)),
-        BillCategory("أوريدو Ooredoo", "الهاتف النقال والإنترنت", Icons.Default.Smartphone, Color(0xFFE85D75)),
-        BillCategory("البريد والمواصلات", "رسوم وخدمات بريدية", Icons.Default.MarkunreadMailbox, Color(0xFF80A9FF)),
-        BillCategory("التأمينات", "SAA • CAAT • CAAR وغيرها", Icons.Default.VerifiedUser, Color(0xFF61C6C2)),
-        BillCategory("الضرائب والرسوم", "ضرائب • طابع • رسوم إدارية", Icons.Default.AccountBalance, Color(0xFF80A9FF)),
-        BillCategory("السكن والإيجار", "إيجار • أعباء العمارة", Icons.Default.Home, Color(0xFFE8B86D)),
-        BillCategory("النقل والسيارة", "تأمين • وقود • مواقف", Icons.Default.DirectionsCar, Color(0xFFFF9B54)),
-        BillCategory("التلفزيون والاشتراكات", "اشتراكات وخدمات رقمية", Icons.Default.LiveTv, Color(0xFFFF8E72)),
-        BillCategory("التعليم والصحة", "مدرسة • جامعة • عيادات", Icons.Default.School, Color(0xFFD59AFF)),
-        BillCategory("فواتير أخرى", "أضف شركة أو مصروفاً خاصاً", Icons.Default.AddCircle, Color(0xFFB4C0CC))
+        BillCategory("الكهرباء", "سونلغاز • استهلاك الكهرباء", Icons.Default.Bolt, Color(0xFFFFC857)),
+        BillCategory("الغاز", "سونلغاز • استهلاك الغاز", Icons.Default.LocalFireDepartment, Color(0xFFFF8E72)),
+        BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
+        BillCategory("اتصالات الجزائر", "Idoom • الإنترنت والهاتف الثابت", Icons.Default.Wifi, Color(0xFF9B8CFF))
     )
     var selected by remember { mutableStateOf<BillCategory?>(null) }
     var search by remember { mutableStateOf("") }
