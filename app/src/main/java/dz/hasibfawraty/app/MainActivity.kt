@@ -1,8 +1,6 @@
 package dz.hasibfawraty.app
 
 import android.os.Bundle
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -24,7 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -93,7 +92,6 @@ private fun waterZoneLabel(zone: String): String = when (zone) {
 
 @Composable
 fun HasibApp() {
-    val context = LocalContext.current
     val categories = listOf(
         BillCategory("سونلغاز", "فاتورة موحدة • الكهرباء والغاز", Icons.Default.Bolt, Color(0xFFFFC857)),
         BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
@@ -120,15 +118,7 @@ fun HasibApp() {
             }
         ) { padding ->
             if (tab == 3 && selected == null) {
-                SettingsScreen(
-                    contentPadding = padding,
-                    onSupport = {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/mahdialloui01-art/hasib-fawraty-dz/issues"))) }
-                    },
-                    onPublishedPolicy = {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/mahdialloui01-art/hasib-fawraty-dz/blob/main/docs/privacy-policy.html"))) }
-                    }
-                )
+                SettingsScreen(contentPadding = padding)
             } else if (selected != null) {
                 CategoryDetail(selected!!, contentPadding = padding, onBack = { selected = null })
             } else {
@@ -512,12 +502,10 @@ private fun EstimatePanel(total: Double, heading: String, note: String) {
 }
 
 @Composable
-private fun SettingsScreen(
-    contentPadding: PaddingValues,
-    onSupport: () -> Unit,
-    onPublishedPolicy: () -> Unit
-) {
+private fun SettingsScreen(contentPadding: PaddingValues) {
     var showPrivacy by remember { mutableStateOf(false) }
+    var showSupport by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
     Column(
         Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 18.dp, vertical = 16.dp)
             .verticalScroll(rememberScrollState())
@@ -525,9 +513,8 @@ private fun SettingsScreen(
         Text("الإعدادات", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
         Text("الخصوصية والدعم ومعلومات التطبيق", color = Muted, fontSize = 12.sp)
         Spacer(Modifier.height(18.dp))
-        SettingsRow(Icons.Default.Policy, "سياسة الخصوصية", "اقرأ السياسة مباشرة داخل التطبيق") { showPrivacy = true }
-        SettingsRow(Icons.Default.OpenInNew, "فتح نسخة السياسة على GitHub", "عرض ملف السياسة في مستودع المشروع", onPublishedPolicy)
-        SettingsRow(Icons.Default.SupportAgent, "الدعم والإبلاغ عن مشكلة", "افتح صفحة الدعم والتواصل", onSupport)
+        SettingsRow(Icons.Default.Policy, "سياسة الخصوصية", "اقرأها هنا دون فتح أي موقع خارجي") { showPrivacy = true }
+        SettingsRow(Icons.Default.SupportAgent, "الدعم والإبلاغ عن مشكلة", "مساعدة داخل التطبيق ونسخ وصف المشكلة") { showSupport = true }
         Spacer(Modifier.height(18.dp))
         Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(18.dp)).padding(16.dp)) {
             Text("حول التطبيق", color = Green, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -536,6 +523,8 @@ private fun SettingsScreen(
             Text("الإصدار 1.0.0", color = Muted, fontSize = 12.sp)
             Text("حاسبة تقديرية لفواتير الكهرباء والغاز والماء واتصالات الجزائر. النتائج ليست فاتورة رسمية.", color = Muted, fontSize = 11.sp)
         }
+        Spacer(Modifier.height(12.dp))
+        Text("الخصوصية والدعم يعملان من داخل التطبيق، ولا يتم توجيهك إلى مستودع برمجي أو موقع خارجي.", color = Green, fontSize = 11.sp)
     }
     if (showPrivacy) {
         AlertDialog(
@@ -544,7 +533,31 @@ private fun SettingsScreen(
             title = { Text("سياسة الخصوصية") },
             text = {
                 Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    Text("آخر تحديث: 7 نوفمبر 2026\n\n1. البيانات: قد تدخل قراءات العدادات والاستهلاك والولاية ومعامل PCS والديون لغرض حساب الفاتورة.\n\n2. الجمع والإرسال: الإصدار الحالي لا يتطلب إنشاء حساب، ولا يرسل مدخلات الفواتير إلى خوادم المطوّر، ولا يتضمن إعلانات أو أدوات تحليل مدمجة.\n\n3. التخزين: لا يوفر الإصدار الحالي مزامنة سحابية أو حساباً لدى المطوّر. قد يحتفظ Android ببيانات التطبيق وفق إعدادات الجهاز؛ يمكن مسح بيانات التطبيق من إعدادات Android.\n\n4. الأذونات: لا يطلب التطبيق أذونات حساسة مثل الموقع أو جهات الاتصال أو الرسائل.\n\n5. الأطفال والتحديثات: التطبيق أداة عامة وليس موجهاً خصيصاً للأطفال. قد تُحدّث السياسة عند تغيير وظائف التطبيق.\n\n6. التواصل: للاستفسارات وطلبات الخصوصية، استخدم صفحة الدعم في GitHub.", color = Color.White)
+                    Text("آخر تحديث: 8 نوفمبر 2026\n\n1. البيانات: قد تدخل قراءات العدادات والاستهلاك والولاية ومعامل PCS والديون لغرض حساب الفاتورة.\n\n2. الجمع والإرسال: الإصدار الحالي لا يتطلب إنشاء حساب، ولا يرسل مدخلات الفواتير إلى خوادم المطوّر، ولا يتضمن إعلانات أو أدوات تحليل مدمجة.\n\n3. التخزين: لا يوفر الإصدار الحالي مزامنة سحابية أو حساباً لدى المطوّر. قد يحتفظ Android ببيانات التطبيق وفق إعدادات الجهاز؛ يمكن مسح بيانات التطبيق من إعدادات Android.\n\n4. الأذونات: لا يطلب التطبيق أذونات حساسة مثل الموقع أو جهات الاتصال أو الرسائل.\n\n5. الأطفال والتحديثات: التطبيق أداة عامة وليس موجهاً خصيصاً للأطفال. قد تُحدّث السياسة عند تغيير وظائف التطبيق.\n\n6. التواصل: يمكنك فتح قسم الدعم داخل التطبيق لقراءة إرشادات المساعدة ونسخ وصف المشكلة. لا يرسل التطبيق بياناتك تلقائياً إلى أي جهة.", color = Color.White)
+                }
+            }
+        )
+    }
+    if (showSupport) {
+        AlertDialog(
+            onDismissRequest = { showSupport = false },
+            confirmButton = {
+                TextButton(onClick = { showSupport = false }) { Text("إغلاق") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString("مشكلة في تطبيق حاسب فاتورتي DZ\nالإصدار: 1.0.0\nوصف المشكلة: "))
+                }) { Text("نسخ وصف المشكلة") }
+            },
+            title = { Text("الدعم والمساعدة") },
+            text = {
+                Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    Text("هذا القسم يعمل داخل التطبيق فقط. لا يفتح GitHub ولا يرسل أي معلومات تلقائياً.", color = Color.White)
+                    Spacer(Modifier.height(12.dp))
+                    Text("قبل الإبلاغ عن مشكلة:", color = Green, fontWeight = FontWeight.Bold)
+                    Text("• تأكد من إدخال المؤشرات كما تظهر في الفاتورة.\n• في سونلغاز، أدخل معامل PCS والقدرة PMD الصحيحين.\n• في الماء، اختر الولاية ونوع الاشتراك الصحيحين.\n• قارن النتيجة مع فاتورة نفس الفترة.", color = Color.White)
+                    Spacer(Modifier.height(12.dp))
+                    Text("زر «نسخ وصف المشكلة» ينسخ قالباً فارغاً فقط؛ لا يتضمن قراءاتك أو فواتيرك.", color = Muted, fontSize = 12.sp)
                 }
             }
         )
