@@ -28,15 +28,12 @@ object AlgerianTariffs {
         val ht = energy + fixed
         val vat = (progressive(used, listOf(125.0, 250.0).map { it * months / 3.0 }, listOf(1.7787, 4.1789, 0.0)) * 0.09) +
                 (progressive(max(0.0, used - 250.0 * months / 3.0), listOf(750.0 * months / 3.0), listOf(4.8120, 5.4796)) * 0.19) + fixed * 0.09
-        val periodFactor = months.coerceAtLeast(1) / 3.0
-        val radio = when {
-            used > 390.0 * periodFactor -> 100.0
-            used > 190.0 * periodFactor -> 50.0
-            used > 70.0 * periodFactor -> 25.0
-            else -> 0.0
-        }
-        return Estimate(used, ht, vat, radio, max(0.0, otherBillLinesTtc), ht + vat + radio + max(0.0, otherBillLinesTtc),
-            "تقدير حسب تعريفة 54M المنزلية. لا يشمل الطابع والديون والرسوم الاستثنائية أو ضريبة السكن.")
+        // Do not invent the old radio-fee tiers here. The official bill's
+        // "Droit fixe sur consommation", housing tax, stamp and other bill lines
+        // vary by invoice and must be entered once in otherBillLinesTtc.
+        val invoiceExtras = max(0.0, otherBillLinesTtc)
+        return Estimate(used, ht, vat, 0.0, invoiceExtras, ht + vat + invoiceExtras,
+            "تقدير حسب تعريفة 54M المنزلية. لا نضيف رسماً ثابتاً افتراضياً؛ أدخل حقوق الاستهلاك وضريبة السكن والطابع والديون الظاهرة في فاتورتك مرة واحدة ضمن البنود الإضافية.")
     }
 
     fun gas(oldIndex: Double, newIndex: Double, pcs: Double, months: Int, otherBillLinesTtc: Double = 0.0): Estimate {
