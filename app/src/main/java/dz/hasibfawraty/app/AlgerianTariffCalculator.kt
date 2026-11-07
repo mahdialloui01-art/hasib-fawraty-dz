@@ -51,13 +51,36 @@ object AlgerianTariffs {
             "التحويل إلى حراريات باستعمال معامل PCS المدون في فاتورتك. لا يشمل الطابع والديون والرسوم الاستثنائية.")
     }
 
-    fun water(cubicMeters: Double, months: Int, otherBillLinesTtc: Double = 0.0): Estimate {
+    // Base rates are set by territorial tariff zone under Executive Decree 05-13.
+    fun water(cubicMeters: Double, months: Int, zone: String, category: String, otherBillLinesTtc: Double = 0.0): Estimate {
         val m = max(0.0, cubicMeters)
-        val water = progressive(m, listOf(25.0, 55.0, 82.0).map { it * months / 3.0 }, listOf(6.30, 20.48, 34.65, 40.95))
-        val sanitation = progressive(m, listOf(25.0, 55.0, 82.0).map { it * months / 3.0 }, listOf(2.35, 7.64, 12.93, 15.28))
-        val fixed = (240.0 + 60.0) * months / 3.0
+        val (waterBase, sanitationBase) = when (zone) {
+            "CHLEF" -> 6.10 to 2.20
+            "OUARGLA" -> 5.80 to 2.10
+            else -> 6.30 to 2.35 // Alger, Oran and Constantine
+        }
+        val multiplier = when (category) {
+            "ADMIN" -> 5.5
+            "INDUSTRY" -> 6.5
+            else -> 1.0
+        }
+        val water = if (category == "HOME") {
+            progressive(m, listOf(25.0, 55.0, 82.0).map { it * months / 3.0 },
+                listOf(waterBase, waterBase * 3.25, waterBase * 5.5, waterBase * 6.5))
+        } else m * waterBase * multiplier
+        val sanitation = if (category == "HOME") {
+            progressive(m, listOf(25.0, 55.0, 82.0).map { it * months / 3.0 },
+                listOf(sanitationBase, sanitationBase * 3.25, sanitationBase * 5.5, sanitationBase * 6.5))
+        } else m * sanitationBase * multiplier
+        val fixedPerQuarter = when (category) {
+            "ADMIN" -> 450.0 + 60.0
+            "INDUSTRY" -> 4500.0 + 2100.0
+            else -> 240.0 + 60.0
+        }
+        val fixed = fixedPerQuarter * months / 3.0
         val ht = water + sanitation + fixed
-        return Estimate(m, ht, 0.0, 0.0, max(0.0, otherBillLinesTtc), ht + max(0.0, otherBillLinesTtc),
-            "تقدير HT وفق جدول ADE المنزلي للفوترة الثلاثية؛ قد تختلف الفاتورة النهائية حسب المنطقة والموزع والضرائب.")
+        val vat = ht * 0.09
+        return Estimate(m, ht, vat, 0.0, max(0.0, otherBillLinesTtc), ht + vat + max(0.0, otherBillLinesTtc),
+            "تقدير حسب المنطقة والاشتراك والشرائح الفصلية (المرسوم 05-13). قد تضاف رسوم الصناديق والطابع والديون حسب فاتورتك.")
     }
 }
