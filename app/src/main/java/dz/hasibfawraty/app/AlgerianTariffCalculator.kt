@@ -33,15 +33,11 @@ object AlgerianTariffs {
                     else listOf(4.1789, 4.8120, 5.4796)
         val energy = progressive(used, limits, rates)
         val fixed = max(0.0, subscribedKw) * 4.37 * months.coerceIn(1, 12)
-        val lowVatLimit = if (household) 250.0 * period else 250.0 * period
+        val lowVatLimit = 250.0 * period
         val lowRate = if (household) listOf(125.0, 250.0).map { it * period } else listOf(lowVatLimit)
         val lowRates = if (household) listOf(1.7787, 4.1789) else listOf(4.1789)
         val lowVatBase = progressive(used, lowRate, lowRates)
-        val highVatBase = if (household) {
-            progressive(max(0.0, used - lowVatLimit), listOf(750.0 * period), listOf(4.8120, 5.4796))
-        } else {
-            progressive(max(0.0, used - lowVatLimit), listOf(750.0 * period), listOf(4.8120, 5.4796))
-        }
+        val highVatBase = progressive(max(0.0, used - lowVatLimit), listOf(750.0 * period), listOf(4.8120, 5.4796))
         val vat = lowVatBase * 0.09 + highVatBase * 0.19 + fixed * 0.09
         val invoiceExtras = max(0.0, otherBillLinesTtc)
         return Estimate(used, energy + fixed, vat, 0.0, invoiceExtras, energy + fixed + vat + invoiceExtras,
