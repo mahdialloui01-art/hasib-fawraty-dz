@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "dz.hasibfawraty.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "dz.hasibfawraty.app"
         minSdk = 23
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 2
+        versionName = "1.0.0"
     }
 
     compileOptions {
@@ -27,6 +27,40 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    // A signed Play upload bundle is produced when the four PLAY_UPLOAD_* secrets
+    // are configured in GitHub Actions. Without them, bundleRelease remains unsigned.
+    val storeFilePath = System.getenv("PLAY_UPLOAD_KEYSTORE_PATH")
+    val storePasswordValue = System.getenv("PLAY_UPLOAD_KEYSTORE_PASSWORD")
+    val keyAliasValue = System.getenv("PLAY_UPLOAD_KEY_ALIAS")
+    val keyPasswordValue = System.getenv("PLAY_UPLOAD_KEY_PASSWORD")
+    if (!storeFilePath.isNullOrBlank() && !storePasswordValue.isNullOrBlank() &&
+        !keyAliasValue.isNullOrBlank() && !keyPasswordValue.isNullOrBlank()) {
+        signingConfigs {
+            create("playRelease") {
+                storeFile = file(storeFilePath)
+                storePassword = storePasswordValue
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
+        buildTypes {
+            getByName("release") {
+                signingConfig = signingConfigs.getByName("playRelease")
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            }
+        }
+    } else {
+        buildTypes {
+            getByName("release") {
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            }
+        }
     }
 }
 
