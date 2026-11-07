@@ -158,6 +158,7 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
     var months by remember { mutableStateOf("3") }
     var telecomPrice by remember { mutableStateOf("") }
     var extra by remember { mutableStateOf("0") }
+    var otherBillLines by remember { mutableStateOf("0") }
     val isElectric = item.title == "الكهرباء"
     val isGas = item.title == "الغاز"
     val isWater = item.title == "الماء"
@@ -166,9 +167,9 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
     val a = first.replace(',', '.').toDoubleOrNull()
     val b = second.replace(',', '.').toDoubleOrNull()
     val estimate = when {
-        isElectric && a != null && b != null && b >= a -> AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count)
-        isGas && a != null && b != null && b >= a && (factor.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0.0 -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 0.0, count)
-        isWater && a != null && a >= 0 -> AlgerianTariffs.water(a, count)
+        isElectric && a != null && b != null && b >= a -> AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
+        isGas && a != null && b != null && b >= a && (factor.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0.0 -> AlgerianTariffs.gas(a, b, factor.replace(',', '.').toDoubleOrNull() ?: 0.0, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
+        isWater && a != null && a >= 0 -> AlgerianTariffs.water(a, count, otherBillLines.replace(',', '.').toDoubleOrNull() ?: 0.0)
         else -> null
     }
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
@@ -226,6 +227,10 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
                     FilterChip(selected = months == v, onClick = { months = v }, label = { Text(v) })
                 }
             }
+            if (!isTelecom) {
+                CalcField("باقي بنود الفاتورة TTC (ضريبة السكن/خدمات/ديون/REPE/RGPE/طابع)", otherBillLines) { otherBillLines = it }
+                Text("اجمع البنود الإضافية كما تظهر في فاتورتك وأدخل مجموعها هنا؛ لا نخمّنها تلقائياً.", color = Gold, fontSize = 10.sp)
+            }
             Spacer(Modifier.height(18.dp))
             if (isTelecom && telecomPrice.isNotBlank()) {
                 EstimatePanel(telecomTotal, "حساب اشتراك تقريبي", "السعر المدخل × $count أشهر + الإضافات. تأكد من سعر العرض قبل الدفع.")
@@ -236,7 +241,8 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
                 Text("الاستهلاك: %.2f".format(estimate.consumption), color = Muted, fontSize = 12.sp)
                 Text("المبلغ HT: %.2f دج".format(estimate.subtotalHt), color = Muted, fontSize = 12.sp)
                 Text("TVA: %.2f دج".format(estimate.vat), color = Muted, fontSize = 12.sp)
-                if (estimate.extra > 0) Text("رسوم إضافية: %.2f دج".format(estimate.extra), color = Muted, fontSize = 12.sp)
+                if (estimate.extra > 0) Text("الرسم الثابت على الاستهلاك: %.2f دج".format(estimate.extra), color = Muted, fontSize = 12.sp)
+                if (estimate.otherBillLines > 0) Text("باقي بنود الفاتورة المدخلة: %.2f دج".format(estimate.otherBillLines), color = Muted, fontSize = 12.sp)
             } else {
                 Text("أدخل القراءات أو الاستهلاك لعرض الحساب.", color = Muted, fontSize = 12.sp)
             }
