@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -69,7 +71,7 @@ fun HasibApp() {
             }
         ) { padding ->
             if (selected != null) {
-                CategoryDetail(selected!!, onBack = { selected = null })
+                CategoryDetail(selected!!, contentPadding = padding, onBack = { selected = null })
             } else {
                 Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
                     Spacer(Modifier.height(18.dp))
@@ -150,7 +152,7 @@ private fun CategoryCard(item: BillCategory, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
+private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, onBack: () -> Unit) {
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
     var factor by remember { mutableStateOf("") }
@@ -175,7 +177,7 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
     val telecomTotal = ((telecomPrice.replace(',', '.').toDoubleOrNull() ?: 0.0) * count) +
             (extra.replace(',', '.').toDoubleOrNull() ?: 0.0)
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp)) {
+    Column(Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 18.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = Color.White) }
             Column {
@@ -184,7 +186,7 @@ private fun CategoryDetail(item: BillCategory, onBack: () -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Column(Modifier.weight(1f).fillMaxWidth()) {
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
             Text(
                 when {
                     isElectric -> "أدخل مؤشري العداد القديم والجديد (kWh)"
