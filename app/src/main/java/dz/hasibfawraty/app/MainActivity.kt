@@ -242,9 +242,9 @@ private fun CategoryDetail(item: BillCategory, contentPadding: PaddingValues, on
     val pcsValue = gasPcs.replace(',', '.').toDoubleOrNull()
     val invoiceExtras = otherBillLines.replace(',', '.').toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
     val electricEstimate = if (isSonelgaz && a != null && b != null && b >= a)
-        AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, 0.0) else null
+        AlgerianTariffs.electricity(a, b, kw.toDoubleOrNull() ?: 6.0, count, 0.0, premisesType == "HOME") else null
     val gasEstimate = if (isSonelgaz && gasA != null && gasB != null && gasB >= gasA && (pcsValue ?: 0.0) > 0.0)
-        AlgerianTariffs.gas(gasA, gasB, pcsValue!!, count, 0.0) else null
+        AlgerianTariffs.gas(gasA, gasB, pcsValue!!, count, 0.0, premisesType == "HOME") else null
     val electricKwh = if (a != null && b != null && b >= a) b - a else 0.0
     val consumptionRight = if (isSonelgaz && premisesType == "HOME" && electricEstimate != null) calculateConsumptionRight(electricKwh) else 0.0
     val housingTax = if (isSonelgaz) calculateHousingTax(count, premisesType == "PRO", housingArea == "HIGH") else 0.0
