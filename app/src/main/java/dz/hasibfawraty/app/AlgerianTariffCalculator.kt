@@ -52,7 +52,7 @@ object AlgerianTariffs {
     }
 
     // Base rates are set by territorial tariff zone under Executive Decree 05-13.
-    fun water(cubicMeters: Double, months: Int, zone: String, category: String, otherBillLinesTtc: Double = 0.0): Estimate {
+    fun water(cubicMeters: Double, months: Int, zone: String, category: String, southLevyRate: Boolean = false, otherBillLinesTtc: Double = 0.0): Estimate {
         val m = max(0.0, cubicMeters)
         val (waterBase, sanitationBase) = when (zone) {
             "CHLEF" -> 6.10 to 2.20
@@ -79,8 +79,14 @@ object AlgerianTariffs {
         }
         val fixed = fixedPerQuarter * months / 3.0
         val ht = water + sanitation + fixed
+        // Water management levy: 3 DA per consumed m3. Resource-protection and water-economy levies:
+        // 4% each in the North, 2% each in the specifically listed Southern wilayas.
+        val managementLevy = m * 3.0
+        val resourceLevyRate = if (southLevyRate) 0.02 else 0.04
+        val resourceLevies = ht * resourceLevyRate * 2.0
+        val levies = managementLevy + resourceLevies
         val vat = ht * 0.09
-        return Estimate(m, ht, vat, 0.0, max(0.0, otherBillLinesTtc), ht + vat + max(0.0, otherBillLinesTtc),
-            "تقدير حسب المنطقة والاشتراك والشرائح الفصلية (المرسوم 05-13). قد تضاف رسوم الصناديق والطابع والديون حسب فاتورتك.")
+        return Estimate(m, ht, vat, levies, max(0.0, otherBillLinesTtc), ht + vat + levies + max(0.0, otherBillLinesTtc),
+            "تقدير HT حسب المرسوم 05-13، مع إتاوة التسيير 3 دج/م³ وإتاوتي حماية النوعية واقتصاد الماء (4% أو 2% لكل واحدة حسب الولاية) وTVA 9%. الطابع والديون والخدمات الخاصة تُضاف يدوياً.")
     }
 }
