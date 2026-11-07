@@ -5,69 +5,102 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   create-key:
-    name: Generate one-time signing package
+    name: Generate key and save it directly to GitHub Secrets
     runs-on: ubuntu-latest
     steps:
-      - name: Refuse to expose signing material from a public repository
-        if: github.event.repository.private != true
-        run: |
-          echo "::error::Make this repository private before generating a signing key. Public-repository artifacts may be accessible to anyone."
-          exit 1
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Generate independent signing package
+      - name: Generate key and store secrets securely
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          mkdir -p signing-package
+          mkdir -p "$RUNNER_TEMP/hasib-signing"
           STORE_PASSWORD="$(openssl rand -hex 24)"
           KEY_PASSWORD="$STORE_PASSWORD"
           KEY_ALIAS="hasibfawraty"
+          KEYSTORE="$RUNNER_TEMP/hasib-signing/hasib-fawraty-upload.jks"
+
           keytool -genkeypair -v \
-            -keystore signing-package/hasib-fawraty-upload.jks \
+            -keystore "$KEYSTORE" \
             -storetype JKS \
             -storepass "$STORE_PASSWORD" \
             -keypass "$KEY_PASSWORD" \
             -alias "$KEY_ALIAS" \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Hasib Fawraty DZ, OU=Mobile, O=Hasib Fawraty DZ, L=Algeria, ST=Algeria, C=DZ"
-          base64 -w 0 signing-package/hasib-fawraty-upload.jks > signing-package/KEYSTORE_BASE64.txt
-          {
-            echo "STORE_PASSWORD=$STORE_PASSWORD"
-            echo "KEY_PASSWORD=$KEY_PASSWORD"
-            echo "KEY_ALIAS=$KEY_ALIAS"
-          } > signing-package/credentials.txt
-          cat > signing-package/README_AR.txt <<'EOF'
-          هذه حزمة توقيع خاصة بتطبيق حاسب فاتورتي DZ فقط.
-          لا تستعملها مع تطبيق رفيق مسلم أو أي تطبيق آخر.
-          
-          أضف محتوى KEYSTORE_BASE64.txt إلى GitHub Secret باسم:
-          PLAY_UPLOAD_KEYSTORE_BASE64
-          
-          أضف STORE_PASSWORD إلى:
-          PLAY_UPLOAD_KEYSTORE_PASSWORD
-          
-          أضف KEY_ALIAS إلى:
-          PLAY_UPLOAD_KEY_ALIAS
-          
-          أضف KEY_PASSWORD إلى:
-          PLAY_UPLOAD_KEY_PASSWORD
-          
-          لا تشارك هذه الملفات أو محتوياتها. احتفظ بنسخة احتياطية آمنة.
-          لا تحذف المفتاح بعد نشر التطبيق؛ ستحتاج إليه لتحديثات التطبيق.
-          EOF
 
-      - name: Upload private signing package
-        uses: actions/upload-artifact@v4
-        with:
-          name: hasib-fawraty-dz-signing-package
-          path: signing-package/
-          retention-days: 1
+          base64 -w 0 "$KEYSTORE" > "$RUNNER_TEMP/hasib-signing/keystore.b64"
+          keytool -exportcert -rfc -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" -file "$RUNNER_TEMP/hasib-signing/cert.pem"
+          CERT_FINGERPRINT="$(openssl x509 -in "$RUNNER_TEMP/hasib-signing/cert.pem" -noout -fingerprint -sha256)"
+          echo "CERT_FINGERPRINT=$CERT_FINGERPRINT" >> "$GITHUB_ENV"
+          echo "STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+
+          python3 -m pip install --quiet pynacl
+          python3 <<'PY'
+          import base64, json, os, urllib.request
+          from nacl.public import PublicKey, SealedBox
+
+          repo = os.environ["REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          if not token:
+              raise SystemExit("GITHUB_TOKEN is unavailable")
+
+          base = f"https://api.github.com/repos/{repo}/actions/secrets"
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          }
+
+          def request(url, method="GET", payload=None):
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(url, data=data, headers=headers, method=method)
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  raw = response.read()
+                  return json.loads(raw) if raw else {}
+
+          public_key = request(base + "/public-key")
+          key = PublicKey(base64.b64decode(public_key["key"]))
+          box = SealedBox(key)
+
+          with open(os.path.join(os.environ["RUNNER_TEMP"], "hasib-signing", "keystore.b64"), "r") as f:
+              keystore_b64 = f.read().strip()
+
+          values = {
+              "PLAY_UPLOAD_KEYSTORE_BASE64": keystore_b64,
+              "PLAY_UPLOAD_KEYSTORE_PASSWORD": os.environ["STORE_PASSWORD"],
+              "PLAY_UPLOAD_KEY_ALIAS": os.environ["KEY_ALIAS"],
+              "PLAY_UPLOAD_KEY_PASSWORD": os.environ["KEY_PASSWORD"],
+          }
+
+          for name, value in values.items():
+              encrypted = base64.b64encode(box.encrypt(value.encode())).decode()
+              request(f"{base}/{name}", method="PUT", payload={
+                  "encrypted_value": encrypted,
+                  "key_id": public_key["key_id"],
+              })
+              print(f"Saved GitHub Actions secret: {name}")
+
+          print("All four signing secrets were saved successfully.")
+          PY
+
+      - name: Show public certificate fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Signing certificate fingerprint (public information):"
+          echo "$CERT_FINGERPRINT"
