@@ -53,7 +53,7 @@ object AlgerianTariffs {
     fun water(cubicMeters: Double, months: Int): Estimate {
         val m = max(0.0, cubicMeters)
         val water = progressive(m, listOf(25.0, 55.0, 82.0).map { it * months / 3.0 }, listOf(6.30, 20.48, 34.65, 40.95))
-        val sanitation = progressive(m, listOf(25.0, 55.0, 82.0), listOf(2.35, 7.64, 12.93, 15.28))
+        val sanitation = progressive(m, listOf(25.0, 55.0, 82.0).map { it * months / 3.0 }, listOf(2.35, 7.64, 12.93, 15.28))
         val fixed = (240.0 + 60.0) * months / 3.0
         val ht = water + sanitation + fixed
         return Estimate(m, ht, 0.0, 0.0, ht,
