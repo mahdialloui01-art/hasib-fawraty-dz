@@ -44,7 +44,8 @@ jobs:
           base64 -w 0 "$KEYSTORE" > "$KEY_DIR/keystore.b64"
           export STORE_PASSWORD KEY_PASSWORD KEY_ALIAS KEYSTORE_B64_FILE="$KEY_DIR/keystore.b64"
 
-          python3 -m pip install --quiet pynacl
+          sudo apt-get update -y
+          sudo apt-get install -y python3-nacl
           python3 <<'PY'
           import base64, json, os, urllib.request
           from nacl.public import PublicKey, SealedBox
