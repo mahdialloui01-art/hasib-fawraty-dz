@@ -70,19 +70,16 @@ internal fun AdBanner(onDismiss: () -> Unit) {
         onDispose { adView.destroy() }
     }
 
-    // Keep AdView attached while loading, but at zero height until an ad is ready.
-    // This avoids both off-screen loading and a blank reserved banner area.
+    // Keep the banner at its natural measured height while the request is in flight.
+    // A zero-height AdView before loading can prevent some SDK layouts from completing.
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (adLoaded) {
-                    Modifier
-                        .background(Color(0xFF101A25))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                } else {
-                    Modifier
-                }
+                if (adLoaded) Modifier
+                    .background(Color(0xFF101A25))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                else Modifier
             )
     ) {
         if (adLoaded) {
@@ -116,7 +113,7 @@ internal fun AdBanner(onDismiss: () -> Unit) {
             factory = { adView },
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (adLoaded) Modifier.wrapContentHeight() else Modifier.height(0.dp))
+                .then(if (adLoaded) Modifier.wrapContentHeight() else Modifier.wrapContentHeight())
         )
     }
 }
