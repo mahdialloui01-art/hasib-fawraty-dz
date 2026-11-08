@@ -65,6 +65,20 @@ jobs:
             echo "::error::Configure both ADMOB_APP_ID and ADMOB_BANNER_AD_UNIT_ID, or leave both empty."
             exit 1
           fi
+          if [ -n "$ADMOB_APP_ID" ]; then
+            if [[ ! "$ADMOB_APP_ID" =~ ^ca-app-pub-[0-9]{16}~[0-9]{10}$ ]]; then
+              echo "::error::ADMOB_APP_ID has an invalid format."
+              exit 1
+            fi
+            if [[ ! "$ADMOB_BANNER_AD_UNIT_ID" =~ ^ca-app-pub-[0-9]{16}/[0-9]{10}$ ]]; then
+              echo "::error::ADMOB_BANNER_AD_UNIT_ID has an invalid format."
+              exit 1
+            fi
+            if [ "$ADMOB_APP_ID" = "ca-app-pub-3940256099942544~3347511713" ] || [ "$ADMOB_BANNER_AD_UNIT_ID" = "ca-app-pub-3940256099942544/9214589741" ]; then
+              echo "::error::Google test ad IDs must never be used in a release build."
+              exit 1
+            fi
+          fi
           gradle testDebugUnitTest
           gradle assembleDebug
           gradle bundleRelease
