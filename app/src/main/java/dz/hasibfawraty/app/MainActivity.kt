@@ -2,6 +2,9 @@ package dz.hasibfawraty.app
 
 import android.os.Bundle
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -9,6 +12,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,11 +35,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 
 private val Ink = Color(0xFF101A25)
 private val Panel = Color(0xFF192736)
@@ -74,9 +86,66 @@ internal fun calculateCashStamp(amountTtc: Double): Double {
 }
 
 class MainActivity : ComponentActivity() {
+    private lateinit var appUpdateManager: AppUpdateManager
+    private var updateDownloaded by mutableStateOf(false)
+
+    private val updateLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) {
+            // The user may postpone or cancel a flexible update; the app remains usable.
+        }
+    }
+
+    private val installStateListener = InstallStateUpdatedListener { state ->
+        if (state.installStatus() == InstallStatus.DOWNLOADED) {
+            updateDownloaded = true
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { HasibApp() }
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        appUpdateManager.registerListener(installStateListener)
+        checkForPlayUpdate()
+        setContent {
+            HasibApp(
+                updateDownloaded = updateDownloaded,
+                onCompleteUpdate = { appUpdateManager.completeUpdate() }
+            )
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::appUpdateManager.isInitialized) {
+            appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
+                if (info.installStatus() == InstallStatus.DOWNLOADED) {
+                    updateDownloaded = true
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        if (::appUpdateManager.isInitialized) {
+            appUpdateManager.unregisterListener(installStateListener)
+        }
+        super.onDestroy()
+    }
+
+    private fun checkForPlayUpdate() {
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
+            if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
+                info.isUpdateTypeAllowed(AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build())
+            ) {
+                appUpdateManager.startUpdateFlowForResult(
+                    info,
+                    updateLauncher,
+                    AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
+                )
+            }
+        }
     }
 }
 
@@ -112,7 +181,7 @@ private fun waterZoneLabel(zone: String): String = when (zone) {
 }
 
 @Composable
-fun HasibApp() {
+fun HasibApp(updateDownloaded: Boolean = false, onCompleteUpdate: () -> Unit = {}) {
     val categories = listOf(
         BillCategory("سونلغاز", "فاتورة موحدة • الكهرباء والغاز", Icons.Default.Bolt, Color(0xFFFFC857)),
         BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
@@ -207,6 +276,16 @@ fun HasibApp() {
                     }
                 }
             }
+        }
+        if (updateDownloaded) {
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text("التحديث جاهز") },
+                text = { Text("تم تنزيل تحديث التطبيق من Google Play. أعد تشغيل التطبيق لتثبيت النسخة الجديدة.") },
+                confirmButton = {
+                    TextButton(onClick = onCompleteUpdate) { Text("تثبيت وإعادة التشغيل") }
+                }
+            )
         }
     }
 }
@@ -553,6 +632,8 @@ private fun SettingsScreen(contentPadding: PaddingValues) {
     var showPrivacy by remember { mutableStateOf(false) }
     var showSupport by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+
     Column(
         Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 18.dp, vertical = 16.dp)
             .verticalScroll(rememberScrollState())
@@ -561,17 +642,30 @@ private fun SettingsScreen(contentPadding: PaddingValues) {
         Text("الخصوصية والدعم ومعلومات التطبيق", color = Muted, fontSize = 12.sp)
         Spacer(Modifier.height(18.dp))
         SettingsRow(Icons.Default.Policy, "سياسة الخصوصية", "اقرأها هنا دون فتح أي موقع خارجي") { showPrivacy = true }
-        SettingsRow(Icons.Default.SupportAgent, "الدعم والإبلاغ عن مشكلة", "مساعدة داخل التطبيق ونسخ وصف المشكلة") { showSupport = true }
+        SettingsRow(Icons.Default.SupportAgent, "الدعم والإبلاغ عن مشكلة", "إرشادات ونسخ وصف المشكلة") { showSupport = true }
+        SettingsRow(Icons.Default.Email, "تواصل مع المطوّر", "راسلنا عبر البريد الإلكتروني") {
+            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:mahdialloui01@gmail.com")
+                putExtra(Intent.EXTRA_SUBJECT, "دعم تطبيق حاسب فاتورتي DZ")
+            }
+            try {
+                context.startActivity(emailIntent)
+            } catch (_: Exception) {
+                Toast.makeText(context, "لا يوجد تطبيق بريد إلكتروني مثبت على الجهاز.", Toast.LENGTH_LONG).show()
+            }
+        }
         Spacer(Modifier.height(18.dp))
         Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(18.dp)).padding(16.dp)) {
             Text("حول التطبيق", color = Green, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Spacer(Modifier.height(6.dp))
             Text("حاسب فاتورتي DZ", color = Color.White, fontWeight = FontWeight.Bold)
-            Text("الإصدار 1.0.0", color = Muted, fontSize = 12.sp)
+            Text("الإصدار ${BuildConfig.VERSION_NAME}", color = Muted, fontSize = 12.sp)
+            Text("المطوّر: حاسب فاتورتي DZ", color = Color.White, fontSize = 12.sp)
+            Text("البريد: mahdialloui01@gmail.com", color = Muted, fontSize = 12.sp)
             Text("حاسبة تقديرية لفواتير الكهرباء والغاز والماء. النتائج ليست فاتورة رسمية.", color = Muted, fontSize = 11.sp)
         }
         Spacer(Modifier.height(12.dp))
-        Text("الخصوصية والدعم يعملان من داخل التطبيق، ولا يتم توجيهك إلى مستودع برمجي أو موقع خارجي.", color = Green, fontSize = 11.sp)
+        Text("لا يرسل التطبيق بيانات الفواتير تلقائياً. عند اختيار التواصل، يفتح تطبيق البريد لإرسال رسالة بموافقتك.", color = Green, fontSize = 11.sp)
     }
     if (showPrivacy) {
         AlertDialog(
@@ -580,7 +674,7 @@ private fun SettingsScreen(contentPadding: PaddingValues) {
             title = { Text("سياسة الخصوصية") },
             text = {
                 Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    Text("آخر تحديث: 8 نوفمبر 2026\n\n1. البيانات: قد تدخل قراءات العدادات والاستهلاك والولاية ومعامل PCS والديون لغرض حساب الفاتورة فقط.\n\n2. الجمع والإرسال: لا يتطلب الإصدار الحالي إنشاء حساب، ولا يرسل مدخلات الفواتير أو قراءات العدادات إلى خوادم المطوّر. لا يتضمن إعلانات أو أدوات تحليل مدمجة، ولا نبيع البيانات أو نشاركها مع أطراف ثالثة.\n\n3. التخزين والحذف: يحفظ قسم «فواتيري» الحسابات التي تختار حفظها في مساحة التطبيق المحلية على جهازك. يمكنك حذف كل فاتورة على حدة أو حذف السجل كاملاً من داخل التطبيق. لا توجد مزامنة سحابية. مسح بيانات التطبيق من إعدادات Android أو إزالة التطبيق يؤدي إلى حذف البيانات المحلية وفق سلوك Android.\n\n4. الأذونات والأمان: لا يطلب التطبيق أذونات حساسة مثل الموقع أو جهات الاتصال أو الرسائل. تتم معالجة الحسابات محلياً على الجهاز.\n\n5. الأطفال والتحديثات: التطبيق أداة حساب عامة وليس موجهاً خصيصاً للأطفال. سنحدّث هذه السياسة إذا تغيرت وظائف التطبيق أو طريقة معالجة البيانات.\n\n6. الدعم: قسم الدعم يعرض إرشادات ويسمح بنسخ قالب فارغ لوصف المشكلة. لا يرسل التطبيق وصف المشكلة أو بياناتك تلقائياً إلى المطوّر.", color = Color.White)
+                    Text("آخر تحديث: 8 نوفمبر 2026\n\n1. بيانات الفواتير: قد تدخل قراءات العدادات والاستهلاك والولاية ومعامل PCS والديون لغرض الحساب فقط. تتم معالجة هذه البيانات محلياً ولا يرسلها التطبيق إلى خوادم المطوّر.\n\n2. التحديثات: يستخدم التطبيق مكتبة Google Play In-App Updates للتحقق من توفر تحديث عبر Google Play. تعالج خدمات Google Play بيانات تقنية مثل إصدار التطبيق وبيانات الجهاز اللازمة لتحديد توفر التحديث وحجمه، وفق شروط وسياسة Google Play. لا تتضمن هذه العملية إرسال قراءات العدادات أو سجل الفواتير إلى المطوّر.\n\n3. التخزين والحذف: يحفظ قسم «فواتيري» الحسابات التي تختار حفظها محلياً على جهازك. يمكنك حذف الفواتير من داخل التطبيق. لا توجد مزامنة سحابية. مسح بيانات التطبيق أو إزالته يحذف البيانات المحلية وفق سلوك Android.\n\n4. الإعلانات والتحليلات: لا يتضمن الإصدار الحالي إعلانات أو أدوات تحليل مدمجة. لا نبيع بيانات الفواتير ولا نشاركها.\n\n5. التواصل: لا يرسل التطبيق رسالة أو بيانات تلقائياً. إذا اخترت «تواصل مع المطوّر»، يفتح تطبيق البريد برسالة جديدة إلى عنوان الدعم ويمكنك مراجعتها وإرسالها بنفسك.\n\n6. الأذونات والأطفال: لا يطلب التطبيق أذونات حساسة مثل الموقع أو جهات الاتصال أو الرسائل. وهو أداة حساب عامة وليس موجهاً خصيصاً للأطفال.", color = Color.White)
                 }
             }
         )
@@ -593,18 +687,18 @@ private fun SettingsScreen(contentPadding: PaddingValues) {
             },
             dismissButton = {
                 TextButton(onClick = {
-                    clipboard.setText(AnnotatedString("مشكلة في تطبيق حاسب فاتورتي DZ\nالإصدار: 1.0.0\nوصف المشكلة: "))
+                    clipboard.setText(AnnotatedString("مشكلة في تطبيق حاسب فاتورتي DZ\nالإصدار: ${BuildConfig.VERSION_NAME}\nوصف المشكلة: "))
                 }) { Text("نسخ وصف المشكلة") }
             },
             title = { Text("الدعم والمساعدة") },
             text = {
                 Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-                    Text("هذا القسم يعمل داخل التطبيق فقط. لا يفتح GitHub ولا يرسل أي معلومات تلقائياً.", color = Color.White)
+                    Text("هذا القسم يعرض إرشادات ولا يرسل معلوماتك تلقائياً.", color = Color.White)
                     Spacer(Modifier.height(12.dp))
                     Text("قبل الإبلاغ عن مشكلة:", color = Green, fontWeight = FontWeight.Bold)
                     Text("• تأكد من إدخال المؤشرات كما تظهر في الفاتورة.\n• في سونلغاز، أدخل معامل PCS والقدرة PMD الصحيحين.\n• في الماء، اختر الولاية ونوع الاشتراك الصحيحين.\n• قارن النتيجة مع فاتورة نفس الفترة.", color = Color.White)
                     Spacer(Modifier.height(12.dp))
-                    Text("زر «نسخ وصف المشكلة» ينسخ قالباً فارغاً فقط؛ لا يتضمن قراءاتك أو فواتيرك.", color = Muted, fontSize = 12.sp)
+                    Text("يمكنك نسخ قالب المشكلة ثم إرساله بنفسك عبر «تواصل مع المطوّر».", color = Muted, fontSize = 12.sp)
                 }
             }
         )
