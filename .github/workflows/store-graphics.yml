@@ -1,0 +1,27 @@
+name: Build Google Play store graphics
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  graphics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SVG renderer and Arabic fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin fonts-noto-core fonts-noto-extra
+      - name: Render Play Store PNG assets
+        run: |
+          mkdir -p dist
+          rsvg-convert -w 512 -h 512 assets/store/icon-master.svg -o dist/play-icon-512.png
+          rsvg-convert -w 1024 -h 500 assets/store/feature-graphic-master.svg -o dist/feature-graphic-1024x500.png
+          file dist/*.png
+          identify dist/*.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasib-fawraty-play-graphics
+          path: dist/*.png
+          if-no-files-found: error
+          retention-days: 14
