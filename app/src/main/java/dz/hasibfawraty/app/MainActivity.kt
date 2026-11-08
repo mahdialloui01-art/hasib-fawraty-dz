@@ -1,6 +1,7 @@
 package dz.hasibfawraty.app
 
 import android.os.Bundle
+import android.util.Log
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -94,6 +95,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var appUpdateManager: AppUpdateManager
     private var updateDownloaded by mutableStateOf(false)
     private var adsReady by mutableStateOf(false)
+    private var adsStatus by mutableStateOf("جارٍ التحقق من إعدادات الإعلانات…")
     private var adsInitializationStarted = false
     private var adsSdkInitialized = false
     private var privacyOptionsRequired by mutableStateOf(false)
@@ -122,6 +124,7 @@ class MainActivity : ComponentActivity() {
             HasibApp(
                 updateDownloaded = updateDownloaded,
                 adsReady = adsReady,
+                adsStatus = adsStatus,
                 privacyOptionsRequired = privacyOptionsRequired,
                 onShowPrivacyOptions = { showPrivacyOptions() },
                 onCompleteUpdate = { appUpdateManager.completeUpdate() }
@@ -156,9 +159,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestAdConsent() {
-        // Ads remain disabled in release builds until real AdMob IDs are configured.
-        if (BuildConfig.ADMOB_APP_ID.isBlank() || BuildConfig.ADMOB_BANNER_AD_UNIT_ID.isBlank()) return
+        Log.i("HasibFawratyAds", "Consent flow started. appIdConfigured=${BuildConfig.ADMOB_APP_ID.isNotBlank()}, bannerIdConfigured=${BuildConfig.ADMOB_BANNER_AD_UNIT_ID.isNotBlank()}")
+        if (BuildConfig.ADMOB_APP_ID.isBlank() || BuildConfig.ADMOB_BANNER_AD_UNIT_ID.isBlank()) {
+            adsStatus = "معرّفات AdMob غير مضبوطة في هذه النسخة"
+            Log.e("HasibFawratyAds", "AdMob IDs are missing")
+            return
+        }
 
+        adsStatus = "جارٍ التحقق من الموافقة على الإعلانات…"
         val info = UserMessagingPlatform.getConsentInformation(this)
         consentInformation = info
         val parameters = ConsentRequestParameters.Builder().build()
@@ -169,40 +177,74 @@ class MainActivity : ComponentActivity() {
                 privacyOptionsRequired =
                     info.privacyOptionsRequirementStatus ==
                         ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
-                UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) {
+                Log.i("HasibFawratyAds", "Consent info updated. canRequestAds=${info.canRequestAds()}, privacyOptionsRequired=$privacyOptionsRequired")
+                // Existing consent can be used immediately; the form callback checks again
+                // after any required consent form has been dismissed.
+                initializeAdsIfAllowed()
+                UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) { formError ->
+                    if (formError != null) {
+                        Log.w("HasibFawratyAds", "Consent form error: $formError")
+                        adsStatus = "تعذر إكمال نافذة الموافقة: ${formError.message}"
+                    } else {
+                        Log.i("HasibFawratyAds", "Consent form flow completed")
+                    }
                     initializeAdsIfAllowed()
                 }
-                initializeAdsIfAllowed()
             },
-            {
+            { formError ->
                 privacyOptionsRequired =
                     info.privacyOptionsRequirementStatus ==
                         ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+                Log.e("HasibFawratyAds", "Consent info update failed: $formError; canRequestAds=${info.canRequestAds()}")
+                adsStatus = if (info.canRequestAds()) "تم الاحتفاظ بالموافقة السابقة؛ جارٍ تهيئة الإعلان" else "تعذر التحقق من موافقة الإعلانات"
                 initializeAdsIfAllowed()
             }
         )
     }
 
     private fun initializeAdsIfAllowed() {
-        val info = consentInformation ?: return
+        val info = consentInformation ?: run {
+            adsReady = false
+            adsStatus = "معلومات الموافقة غير متوفرة"
+            Log.w("HasibFawratyAds", "ConsentInformation is null")
+            return
+        }
         if (!info.canRequestAds()) {
             adsReady = false
+            adsStatus = "الإعلانات متوقفة إلى حين السماح بطلبها"
+            Log.i("HasibFawratyAds", "Ads not requested: canRequestAds=false")
             return
         }
         if (adsSdkInitialized) {
             adsReady = true
+            adsStatus = "تهيئة الإعلانات مكتملة"
             return
         }
-        if (adsInitializationStarted) return
+        if (adsInitializationStarted) {
+            adsStatus = "جارٍ تهيئة خدمة الإعلانات…"
+            return
+        }
         adsInitializationStarted = true
+        adsStatus = "جارٍ تشغيل خدمة الإعلانات…"
+        Log.i("HasibFawratyAds", "Starting MobileAds initialization")
         Thread {
-            MobileAds.initialize(
-                this,
-                InitializationConfig.Builder(BuildConfig.ADMOB_APP_ID).build()
-            ) {
+            try {
+                MobileAds.initialize(
+                    this,
+                    InitializationConfig.Builder(BuildConfig.ADMOB_APP_ID).build()
+                ) {
+                    runOnUiThread {
+                        adsSdkInitialized = true
+                        adsReady = info.canRequestAds()
+                        adsStatus = if (adsReady) "خدمة الإعلانات جاهزة؛ جارٍ تحميل البانر" else "الموافقة لا تسمح بطلب الإعلانات حالياً"
+                        Log.i("HasibFawratyAds", "MobileAds initialized. canRequestAds=${info.canRequestAds()}")
+                    }
+                }
+            } catch (error: Exception) {
                 runOnUiThread {
-                    adsSdkInitialized = true
-                    adsReady = info.canRequestAds()
+                    adsReady = false
+                    adsStatus = "فشل تشغيل خدمة الإعلانات: ${error.javaClass.simpleName}"
+                    Log.e("HasibFawratyAds", "MobileAds initialization failed", error)
                 }
             }
         }.start()
@@ -211,7 +253,12 @@ class MainActivity : ComponentActivity() {
     private fun showPrivacyOptions() {
         if (!privacyOptionsRequired) return
         adsReady = false
-        UserMessagingPlatform.showPrivacyOptionsForm(this) {
+        adsStatus = "جارٍ تحديث خيارات خصوصية الإعلانات…"
+        UserMessagingPlatform.showPrivacyOptionsForm(this) { formError ->
+            if (formError != null) {
+                Log.w("HasibFawratyAds", "Privacy options form error: $formError")
+                adsStatus = "تعذر فتح خيارات الخصوصية: ${formError.message}"
+            }
             initializeAdsIfAllowed()
         }
     }
@@ -268,6 +315,7 @@ private fun waterZoneLabel(zone: String): String = when (zone) {
 fun HasibApp(
     updateDownloaded: Boolean = false,
     adsReady: Boolean = false,
+    adsStatus: String = "جارٍ التحقق من الإعلانات…",
     privacyOptionsRequired: Boolean = false,
     onShowPrivacyOptions: () -> Unit = {},
     onCompleteUpdate: () -> Unit = {}
@@ -293,8 +341,12 @@ fun HasibApp(
             containerColor = Ink,
             bottomBar = {
                 Column {
-                    if (adsReady && selected == null && !bannerDismissed) {
-                        AdBanner(onDismiss = { bannerDismissed = true })
+                    if (selected == null && tab == 0 && !bannerDismissed) {
+                        AdBanner(
+                            adsReady = adsReady,
+                            status = adsStatus,
+                            onDismiss = { bannerDismissed = true }
+                        )
                     }
                     NavigationBar(containerColor = Panel, contentColor = Green) {
                     NavigationBarItem(selected = tab == 0, onClick = { tab = 0; selected = null }, icon = { Icon(Icons.Default.Dashboard, null) }, label = { Text("الرئيسية") })
