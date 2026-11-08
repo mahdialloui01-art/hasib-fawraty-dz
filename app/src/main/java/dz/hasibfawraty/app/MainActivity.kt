@@ -100,6 +100,33 @@ class MainActivity : ComponentActivity() {
     private var adsSdkInitialized = false
     private var privacyOptionsRequired by mutableStateOf(false)
     private var consentInformation: ConsentInformation? = null
+    private var dnsBlocked by mutableStateOf(false)
+    private var consentFlowStarted = false
+
+    private fun isPrivateDnsDisabled(): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.P) return true
+        // Android reports "off", "opportunistic" (Automatic), or "hostname".
+        // Only "off" satisfies the user's requested entry condition.
+        val mode = android.provider.Settings.Global.getString(
+            contentResolver, "private_dns_mode"
+        )
+        return mode == "off"
+    }
+
+    private fun openPrivateDnsSettings() {
+        val intents = listOf(
+            Intent("android.settings.PRIVATE_DNS_SETTINGS"),
+            Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS),
+            Intent(android.provider.Settings.ACTION_SETTINGS)
+        )
+        for (intent in intents) {
+            try {
+                startActivity(intent)
+                return
+            } catch (_: Exception) { }
+        }
+        Toast.makeText(this, "تعذر فتح إعدادات DNS. افتح إعدادات الهاتف يدوياً.", Toast.LENGTH_LONG).show()
+    }
 
     private val updateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -120,8 +147,11 @@ class MainActivity : ComponentActivity() {
         appUpdateManager = AppUpdateManagerFactory.create(this)
         appUpdateManager.registerListener(installStateListener)
         checkForPlayUpdate()
+        dnsBlocked = !isPrivateDnsDisabled()
         setContent {
             HasibApp(
+                dnsBlocked = dnsBlocked,
+                onOpenDnsSettings = { openPrivateDnsSettings() },
                 updateDownloaded = updateDownloaded,
                 adsReady = adsReady,
                 adsStatus = adsStatus,
@@ -130,11 +160,14 @@ class MainActivity : ComponentActivity() {
                 onCompleteUpdate = { appUpdateManager.completeUpdate() }
             )
         }
-        requestAdConsent()
+        if (!dnsBlocked) requestAdConsent()
     }
 
     override fun onResume() {
         super.onResume()
+        val wasDnsBlocked = dnsBlocked
+        dnsBlocked = !isPrivateDnsDisabled()
+        if (wasDnsBlocked && !dnsBlocked && !consentFlowStarted) requestAdConsent()
         if (::appUpdateManager.isInitialized) {
             appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
                 when {
@@ -159,6 +192,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestAdConsent() {
+        if (consentFlowStarted) return
+        consentFlowStarted = true
         Log.i("HasibFawratyAds", "Consent flow started. appIdConfigured=${BuildConfig.ADMOB_APP_ID.isNotBlank()}, bannerIdConfigured=${BuildConfig.ADMOB_BANNER_AD_UNIT_ID.isNotBlank()}")
         if (BuildConfig.ADMOB_APP_ID.isBlank() || BuildConfig.ADMOB_BANNER_AD_UNIT_ID.isBlank()) {
             adsStatus = "معرّفات AdMob غير مضبوطة في هذه النسخة"
@@ -313,6 +348,8 @@ private fun waterZoneLabel(zone: String): String = when (zone) {
 
 @Composable
 fun HasibApp(
+    dnsBlocked: Boolean = false,
+    onOpenDnsSettings: () -> Unit = {},
     updateDownloaded: Boolean = false,
     adsReady: Boolean = false,
     adsStatus: String = "جارٍ التحقق من الإعلانات…",
@@ -337,6 +374,9 @@ fun HasibApp(
         background = Ink, surface = Panel, primary = Green, secondary = Gold,
         onBackground = Color.White, onSurface = Color.White
     )) {
+        if (dnsBlocked) {
+            DnsGateScreen(onOpenDnsSettings)
+        } else {
         Scaffold(
             containerColor = Ink,
             bottomBar = {
@@ -430,7 +470,8 @@ fun HasibApp(
                 }
             }
         }
-        if (updateDownloaded) {
+        }
+        if (!dnsBlocked && updateDownloaded) {
             AlertDialog(
                 onDismissRequest = {},
                 title = { Text("التحديث جاهز") },
@@ -439,6 +480,40 @@ fun HasibApp(
                     TextButton(onClick = onCompleteUpdate) { Text("تثبيت وإعادة التشغيل") }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun DnsGateScreen(onOpenDnsSettings: () -> Unit) {
+    MaterialTheme(colorScheme = darkColorScheme(
+        background = Ink, surface = Panel, primary = Green, onBackground = Color.White, onSurface = Color.White
+    )) {
+        Column(
+            Modifier.fillMaxSize().background(Ink).padding(26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Default.Lock, null, tint = Gold, modifier = Modifier.size(58.dp))
+            Spacer(Modifier.height(20.dp))
+            Text("الدخول متوقف مؤقتاً", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "لازم تطفّي DNS الخاص من إعدادات الهاتف قبل استعمال التطبيق. اختَر DNS الخاص ثم أوقفه (Off)، وبعدها ارجع للتطبيق.",
+                color = Muted, fontSize = 14.sp, textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = onOpenDnsSettings,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Green, contentColor = Ink)
+            ) {
+                Icon(Icons.Default.Dns, null)
+                Spacer(Modifier.width(8.dp))
+                Text("فتح إعدادات DNS الخاص")
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("سيُفتح التطبيق تلقائياً بعد إيقاف DNS والعودة إليه.", color = Gold, fontSize = 11.sp, textAlign = TextAlign.Center)
         }
     }
 }
