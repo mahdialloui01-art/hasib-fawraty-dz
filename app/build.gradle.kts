@@ -10,10 +10,15 @@ android {
 
     defaultConfig {
         applicationId = "dz.hasibfawraty.app"
-        minSdk = 23
+        minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.1"
+        versionCode = 4
+        versionName = "1.0.2"
+        val admobAppId = System.getenv("ADMOB_APP_ID").orEmpty()
+        val admobBannerId = System.getenv("ADMOB_BANNER_AD_UNIT_ID").orEmpty()
+        manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
+        buildConfigField("String", "ADMOB_APP_ID", "\"${admobAppId}\"")
+        buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"${admobBannerId}\"")
     }
 
     compileOptions {
@@ -47,6 +52,11 @@ android {
             }
         }
         buildTypes {
+            getByName("debug") {
+                manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-3940256099942544~3347511713"
+                buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-3940256099942544~3347511713\"")
+                buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"/21775744923/example/adaptive-banner\"")
+            }
             getByName("release") {
                 signingConfig = signingConfigs.getByName("playRelease")
                 isMinifyEnabled = true
@@ -56,6 +66,11 @@ android {
         }
     } else {
         buildTypes {
+            getByName("debug") {
+                manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-3940256099942544~3347511713"
+                buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-3940256099942544~3347511713\"")
+                buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"/21775744923/example/adaptive-banner\"")
+            }
             getByName("release") {
                 isMinifyEnabled = true
                 isShrinkResources = true
@@ -78,6 +93,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
+    implementation("com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.6.0")
+    implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
 }
