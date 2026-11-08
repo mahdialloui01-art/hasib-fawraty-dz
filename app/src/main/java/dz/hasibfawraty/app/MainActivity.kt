@@ -120,8 +120,15 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         if (::appUpdateManager.isInitialized) {
             appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
-                if (info.installStatus() == InstallStatus.DOWNLOADED) {
-                    updateDownloaded = true
+                when {
+                    info.installStatus() == InstallStatus.DOWNLOADED -> updateDownloaded = true
+                    info.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS -> {
+                        appUpdateManager.startUpdateFlowForResult(
+                            info,
+                            updateLauncher,
+                            AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build()
+                        )
+                    }
                 }
             }
         }
@@ -136,14 +143,16 @@ class MainActivity : ComponentActivity() {
 
     private fun checkForPlayUpdate() {
         appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
-            if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
-                info.isUpdateTypeAllowed(AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build())
-            ) {
-                appUpdateManager.startUpdateFlowForResult(
-                    info,
-                    updateLauncher,
-                    AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
-                )
+            if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
+                val updateType = if (
+                    info.updatePriority() >= 4 &&
+                    info.isUpdateTypeAllowed(AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build())
+                ) AppUpdateType.IMMEDIATE else AppUpdateType.FLEXIBLE
+
+                val options = AppUpdateOptions.newBuilder(updateType).build()
+                if (info.isUpdateTypeAllowed(options)) {
+                    appUpdateManager.startUpdateFlowForResult(info, updateLauncher, options)
+                }
             }
         }
     }
