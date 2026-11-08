@@ -55,7 +55,7 @@ android {
             getByName("debug") {
                 manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-3940256099942544~3347511713"
                 buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-3940256099942544~3347511713\"")
-                buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"/21775744923/example/adaptive-banner\"")
+                buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"ca-app-pub-3940256099942544/9214589741\"")
             }
             getByName("release") {
                 signingConfig = signingConfigs.getByName("playRelease")
@@ -69,7 +69,7 @@ android {
             getByName("debug") {
                 manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-3940256099942544~3347511713"
                 buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-3940256099942544~3347511713\"")
-                buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"/21775744923/example/adaptive-banner\"")
+                buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"ca-app-pub-3940256099942544/9214589741\"")
             }
             getByName("release") {
                 isMinifyEnabled = true
