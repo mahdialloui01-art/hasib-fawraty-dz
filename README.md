@@ -3,7 +3,7 @@
 تطبيق أندرويد مساعد لتقدير فواتير الخدمات في الجزائر:
 - سونلغاز: الكهرباء والغاز في فاتورة موحدة.
 - الماء: ADE وشركات المياه.
-- اتصالات الجزائر: الهاتف والإنترنت.
+
 
 ## الخصوصية
 الإصدار الحالي يعالج المدخلات محلياً على الجهاز ولا يرسل قراءات العدادات أو مبالغ الفواتير إلى خوادم المطوّر. راجع [سياسة الخصوصية](docs/privacy-policy.html).
@@ -16,6 +16,12 @@
 - Android Gradle Plugin 8.10.1
 - Gradle 8.11.1
 - compileSdk / targetSdk 36
+- minSdk 24 (Android 7.0)
+- Google Mobile Ads Next-Gen + UMP consent support
+
+## Advertising
+See [AdMob setup guide](docs/admob-setup.md). Debug builds use Google's test ad IDs. Release ads remain inactive until both valid production AdMob IDs are configured as GitHub Actions secrets (`ADMOB_APP_ID` and `ADMOB_BANNER_AD_UNIT_ID`).
+
 
 ```bash
 gradle testDebugUnitTest
