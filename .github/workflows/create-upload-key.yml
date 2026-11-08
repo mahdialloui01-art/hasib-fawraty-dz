@@ -48,6 +48,7 @@ jobs:
           sudo apt-get install -y python3-nacl
           python3 <<'PY'
           import base64, json, os, urllib.request
+          from urllib.error import HTTPError
           from nacl.public import PublicKey, SealedBox
 
           repo = os.environ["REPOSITORY"]
@@ -63,9 +64,16 @@ jobs:
           def call(url, method="GET", payload=None):
               data = None if payload is None else json.dumps(payload).encode()
               req = urllib.request.Request(url, data=data, headers=headers, method=method)
-              with urllib.request.urlopen(req, timeout=30) as response:
-                  raw = response.read()
-                  return json.loads(raw) if raw else {}
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      raw = response.read()
+                      return json.loads(raw) if raw else {}
+              except HTTPError as error:
+                  detail = error.read().decode("utf-8", errors="replace")
+                  raise SystemExit(
+                      f"GitHub API request failed: HTTP {error.code} "
+                      f"{method} {url}. Response: {detail[:1200]}"
+                  )
 
           public = call(api + "/public-key")
           box = SealedBox(PublicKey(base64.b64decode(public["key"])))
