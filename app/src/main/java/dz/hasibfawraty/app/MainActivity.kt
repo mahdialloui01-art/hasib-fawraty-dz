@@ -802,7 +802,7 @@ private fun SettingsScreen(
         SettingsRow(Icons.Default.Dns, "إعدادات DNS الخاص", "افتح إعدادات أندرويد لتعطيل DNS الذي قد يحجب الإعلانات") {
             try {
                 val dnsIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                    Intent(android.provider.Settings.ACTION_PRIVATE_DNS_SETTINGS)
+                    Intent("android.settings.PRIVATE_DNS_SETTINGS")
                 } else {
                     Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
                 }
