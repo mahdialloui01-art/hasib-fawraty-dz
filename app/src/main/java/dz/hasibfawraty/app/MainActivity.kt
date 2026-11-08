@@ -712,7 +712,11 @@ private fun EstimatePanel(total: Double, heading: String, note: String) {
 }
 
 @Composable
-private fun SettingsScreen(contentPadding: PaddingValues) {
+private fun SettingsScreen(
+    contentPadding: PaddingValues,
+    privacyOptionsRequired: Boolean = false,
+    onShowPrivacyOptions: () -> Unit = {}
+) {
     var showPrivacy by remember { mutableStateOf(false) }
     var showSupport by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
@@ -725,7 +729,10 @@ private fun SettingsScreen(contentPadding: PaddingValues) {
         Text("الإعدادات", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
         Text("الخصوصية والدعم ومعلومات التطبيق", color = Muted, fontSize = 12.sp)
         Spacer(Modifier.height(18.dp))
-        SettingsRow(Icons.Default.Policy, "سياسة الخصوصية", "اقرأها هنا دون فتح أي موقع خارجي") { showPrivacy = true }
+        SettingsRow(Icons.Default.Policy, "سياسة الخصوصية", "اقرأها هنا أو افتح النسخة المنشورة") { showPrivacy = true }
+        if (privacyOptionsRequired) {
+            SettingsRow(Icons.Default.PrivacyTip, "خيارات خصوصية الإعلانات", "راجع أو غيّر اختيارات الموافقة") { onShowPrivacyOptions() }
+        }
         SettingsRow(Icons.Default.SupportAgent, "الدعم والإبلاغ عن مشكلة", "إرشادات ونسخ وصف المشكلة") { showSupport = true }
         SettingsRow(Icons.Default.Email, "تواصل مع المطوّر", "راسلنا عبر البريد الإلكتروني") {
             val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
@@ -754,11 +761,22 @@ private fun SettingsScreen(contentPadding: PaddingValues) {
     if (showPrivacy) {
         AlertDialog(
             onDismissRequest = { showPrivacy = false },
-            confirmButton = { TextButton(onClick = { showPrivacy = false }) { Text("إغلاق") } },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://mahdialloui01-art.github.io/hasib-fawraty-dz/privacy-policy.html")))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "تعذر فتح رابط سياسة الخصوصية.", Toast.LENGTH_LONG).show()
+                        }
+                    }) { Text("فتح النسخة المنشورة") }
+                    TextButton(onClick = { showPrivacy = false }) { Text("إغلاق") }
+                }
+            },
             title = { Text("سياسة الخصوصية") },
             text = {
                 Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    Text("آخر تحديث: 8 نوفمبر 2026\n\n1. بيانات الفواتير: قد تدخل قراءات العدادات والاستهلاك والولاية ومعامل PCS والديون لغرض الحساب فقط. تتم معالجة هذه البيانات محلياً ولا يرسلها التطبيق إلى خوادم المطوّر.\n\n2. التحديثات: يستخدم التطبيق مكتبة Google Play In-App Updates للتحقق من توفر تحديث عبر Google Play. تعالج خدمات Google Play بيانات تقنية مثل إصدار التطبيق وبيانات الجهاز اللازمة لتحديد توفر التحديث وحجمه، وفق شروط وسياسة Google Play. لا تتضمن هذه العملية إرسال قراءات العدادات أو سجل الفواتير إلى المطوّر.\n\n3. التخزين والحذف: يحفظ قسم «فواتيري» الحسابات التي تختار حفظها محلياً على جهازك. يمكنك حذف الفواتير من داخل التطبيق. لا توجد مزامنة سحابية. مسح بيانات التطبيق أو إزالته يحذف البيانات المحلية وفق سلوك Android.\n\n4. الإعلانات والتحليلات: لا يتضمن الإصدار الحالي إعلانات أو أدوات تحليل مدمجة. لا نبيع بيانات الفواتير ولا نشاركها.\n\n5. التواصل: لا يرسل التطبيق رسالة أو بيانات تلقائياً. إذا اخترت «تواصل مع المطوّر»، يفتح تطبيق البريد برسالة جديدة إلى عنوان الدعم ويمكنك مراجعتها وإرسالها بنفسك.\n\n6. الأذونات والأطفال: لا يطلب التطبيق أذونات حساسة مثل الموقع أو جهات الاتصال أو الرسائل. وهو أداة حساب عامة وليس موجهاً خصيصاً للأطفال.", color = Color.White)
+                    Text("آخر تحديث: 8 نوفمبر 2026\n\n1. بيانات الفواتير: قد تدخل قراءات العدادات والاستهلاك والولاية ومعامل PCS والديون لغرض الحساب فقط. تتم معالجة هذه البيانات محلياً ولا يرسلها التطبيق إلى خوادم المطوّر.\n\n2. التحديثات: يستخدم التطبيق مكتبة Google Play In-App Updates للتحقق من توفر تحديث عبر Google Play. تعالج خدمات Google Play بيانات تقنية مثل إصدار التطبيق وبيانات الجهاز اللازمة لتحديد توفر التحديث وحجمه، وفق شروط وسياسة Google Play. لا تتضمن هذه العملية إرسال قراءات العدادات أو سجل الفواتير إلى المطوّر.\n\n3. التخزين والحذف: يحفظ قسم «فواتيري» الحسابات التي تختار حفظها محلياً على جهازك. يمكنك حذف الفواتير من داخل التطبيق. لا توجد مزامنة سحابية. مسح بيانات التطبيق أو إزالته يحذف البيانات المحلية وفق سلوك Android.\n\n4. الإعلانات والموافقة: عند تفعيل الإعلانات، يستخدم التطبيق Google Mobile Ads لعرض إعلانات بانر. قبل طلب الإعلانات، يستخدم Google UMP لعرض خيارات الموافقة حيثما تكون مطلوبة، ويمكنك تعديل اختيارات الخصوصية من الإعدادات عندما يطلب ذلك النظام. قد يجمع SDK الإعلاني تلقائياً عنوان IP ومعرّفات الجهاز والتفاعلات مع التطبيق وبيانات التشخيص والإعلانات لأغراض الإعلان والتحليل ومنع الاحتيال، وفق إعداداتك وسياسات Google. لا يرسل التطبيق قراءات العدادات أو تفاصيل الفواتير إلى المطوّر. لا نستخدم SDK تحليلات مستقلاً ولا نبيع بيانات الفواتير.\n\n5. التواصل: لا يرسل التطبيق رسالة أو بيانات تلقائياً. إذا اخترت «تواصل مع المطوّر»، يفتح تطبيق البريد برسالة جديدة إلى عنوان الدعم ويمكنك مراجعتها وإرسالها بنفسك.\n\n6. الأذونات والأطفال: لا يطلب التطبيق أذونات حساسة مثل الموقع أو جهات الاتصال أو الرسائل. وهو أداة حساب عامة وليس موجهاً خصيصاً للأطفال.", color = Color.White)
                 }
             }
         )
