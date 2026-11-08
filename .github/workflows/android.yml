@@ -56,7 +56,15 @@ jobs:
             echo "::warning::No upload signing secrets configured. A Play-ready signed AAB will not be published as an artifact."
           fi
       - name: Build and test
+        env:
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
         run: |
+          set -euo pipefail
+          if { [ -n "$ADMOB_APP_ID" ] && [ -z "$ADMOB_BANNER_AD_UNIT_ID" ]; } || { [ -z "$ADMOB_APP_ID" ] && [ -n "$ADMOB_BANNER_AD_UNIT_ID" ]; }; then
+            echo "::error::Configure both ADMOB_APP_ID and ADMOB_BANNER_AD_UNIT_ID, or leave both empty."
+            exit 1
+          fi
           gradle testDebugUnitTest
           gradle assembleDebug
           gradle bundleRelease
