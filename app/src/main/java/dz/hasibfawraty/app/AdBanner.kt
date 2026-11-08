@@ -3,10 +3,10 @@ package dz.hasibfawraty.app
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -71,43 +71,53 @@ internal fun AdBanner(onDismiss: () -> Unit) {
         onDispose { adView.destroy() }
     }
 
-    // Do not reserve any space until an actual banner has loaded successfully.
-    if (!adLoaded) return
-
+    // Keep AdView attached while loading, but at zero height until an ad is ready.
+    // This avoids both off-screen loading and a blank reserved banner area.
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF101A25))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "إعلان",
-                color = Color(0xFF9EAFBD),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium
+            .then(
+                if (adLoaded) {
+                    Modifier
+                        .background(Color(0xFF101A25))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                } else {
+                    Modifier
+                }
             )
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xFFD32F2F), CircleShape)
+    ) {
+        if (adLoaded) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Close,
-                    contentDescription = "إخفاء الإعلان",
-                    tint = Color.White,
-                    modifier = Modifier.size(26.dp)
+                Text(
+                    text = "إعلان",
+                    color = Color(0xFF9EAFBD),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium
                 )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color(0xFFD32F2F), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                        contentDescription = "إخفاء الإعلان",
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
         AndroidView(
             factory = { adView },
-            modifier = Modifier.fillMaxWidth().wrapContentHeight()
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (adLoaded) Modifier.wrapContentHeight() else Modifier.height(0.dp))
         )
     }
 }
