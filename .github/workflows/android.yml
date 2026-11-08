@@ -77,3 +77,5 @@ jobs:
         with:
           name: hasib-fawraty-dz-signed-play-aab
           path: app/build/outputs/bundle/release/app-release.aab
+
+# Signing validation rerun after upload-key secrets were provisioned.
