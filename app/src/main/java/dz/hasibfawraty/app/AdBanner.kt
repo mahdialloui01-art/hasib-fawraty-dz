@@ -50,6 +50,7 @@ internal fun AdBanner(onDismiss: () -> Unit) {
     }
     val adView = remember { AdView(context) }
     var adLoaded by remember(adView) { mutableStateOf(false) }
+    var requestFinished by remember(adView) { mutableStateOf(false) }
 
     LaunchedEffect(adView, adSize, adUnitId) {
         val request = BannerAdRequest.Builder(adUnitId, adSize).build()
@@ -57,11 +58,13 @@ internal fun AdBanner(onDismiss: () -> Unit) {
             override fun onAdLoaded(ad: BannerAd) {
                 Log.d("HasibFawratyAds", "Banner ad loaded")
                 adLoaded = true
+                requestFinished = true
             }
 
             override fun onAdFailedToLoad(adError: LoadAdError) {
                 Log.w("HasibFawratyAds", "Banner ad failed to load: $adError")
                 adLoaded = false
+                requestFinished = true
             }
         })
     }
@@ -113,7 +116,7 @@ internal fun AdBanner(onDismiss: () -> Unit) {
             factory = { adView },
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (adLoaded) Modifier.wrapContentHeight() else Modifier.wrapContentHeight())
+                .then(if (requestFinished && !adLoaded) Modifier.height(0.dp) else Modifier.wrapContentHeight())
         )
     }
 }
