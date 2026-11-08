@@ -3,10 +3,17 @@ package dz.hasibfawraty.app
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Alignment
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +35,7 @@ import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
 import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 
 @Composable
-internal fun AdBanner() {
+internal fun AdBanner(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
     val adUnitId = BuildConfig.ADMOB_BANNER_AD_UNIT_ID
@@ -54,13 +61,25 @@ internal fun AdBanner() {
     }
 
     Column(modifier = Modifier.fillMaxWidth().background(Color(0xFF101A25)).padding(vertical = 8.dp)) {
-        Text(
-            text = "إعلان",
-            color = Color(0xFF9EAFBD),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "إعلان",
+                color = Color(0xFF9EAFBD),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "إخفاء الإعلان",
+                    tint = Color(0xFF9EAFBD)
+                )
+            }
+        }
         AndroidView(
             factory = { adView },
             modifier = Modifier.fillMaxWidth().wrapContentHeight()
