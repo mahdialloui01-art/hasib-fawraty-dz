@@ -799,6 +799,22 @@ private fun SettingsScreen(
         Text("الخصوصية والدعم ومعلومات التطبيق", color = Muted, fontSize = 12.sp)
         Spacer(Modifier.height(18.dp))
         SettingsRow(Icons.Default.Policy, "سياسة الخصوصية", "اقرأها هنا أو افتح النسخة المنشورة") { showPrivacy = true }
+        SettingsRow(Icons.Default.Dns, "إعدادات DNS الخاص", "افتح إعدادات أندرويد لتعطيل DNS الذي قد يحجب الإعلانات") {
+            try {
+                val dnsIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    Intent(android.provider.Settings.ACTION_PRIVATE_DNS_SETTINGS)
+                } else {
+                    Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
+                }
+                context.startActivity(dnsIntent)
+            } catch (_: Exception) {
+                try {
+                    context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                } catch (_: Exception) {
+                    Toast.makeText(context, "تعذر فتح إعدادات الهاتف.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         if (privacyOptionsRequired) {
             SettingsRow(Icons.Default.PrivacyTip, "خيارات خصوصية الإعلانات", "راجع أو غيّر اختيارات الموافقة") { onShowPrivacyOptions() }
         }
