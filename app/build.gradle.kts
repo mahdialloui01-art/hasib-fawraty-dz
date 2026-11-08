@@ -27,6 +27,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // A signed Play upload bundle is produced when the four PLAY_UPLOAD_* secrets
