@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -104,11 +103,11 @@ internal fun AdBanner(onDismiss: () -> Unit) {
                         .size(48.dp)
                         .background(Color(0xFFD32F2F), CircleShape)
                 ) {
-                    Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Default.Close,
-                        contentDescription = "إخفاء الإعلان",
-                        tint = Color.White,
-                        modifier = Modifier.size(26.dp)
+                    Text(
+                        text = "×",
+                        color = Color.White,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
