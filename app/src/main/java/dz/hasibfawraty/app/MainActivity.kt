@@ -281,6 +281,8 @@ fun HasibApp(
     var selected by remember { mutableStateOf<BillCategory?>(null) }
     var search by remember { mutableStateOf("") }
     var tab by remember { mutableIntStateOf(0) }
+    // A dismissed banner stays hidden for this app session only; it returns on the next app launch.
+    var bannerDismissed by remember { mutableStateOf(false) }
     val visible = categories.filter { it.title.contains(search, true) || it.subtitle.contains(search, true) }
 
     MaterialTheme(colorScheme = darkColorScheme(
@@ -291,8 +293,8 @@ fun HasibApp(
             containerColor = Ink,
             bottomBar = {
                 Column {
-                    if (adsReady && selected == null) {
-                        AdBanner()
+                    if (adsReady && selected == null && !bannerDismissed) {
+                        AdBanner(onDismiss = { bannerDismissed = true })
                         Spacer(Modifier.height(24.dp))
                     }
                     NavigationBar(containerColor = Panel, contentColor = Green) {
