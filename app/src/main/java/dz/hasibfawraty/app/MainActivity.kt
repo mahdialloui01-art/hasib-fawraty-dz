@@ -95,6 +95,7 @@ class MainActivity : ComponentActivity() {
     private var updateDownloaded by mutableStateOf(false)
     private var adsReady by mutableStateOf(false)
     private var adsInitializationStarted = false
+    private var adsSdkInitialized = false
     private var privacyOptionsRequired by mutableStateOf(false)
     private var consentInformation: ConsentInformation? = null
 
@@ -184,20 +185,32 @@ class MainActivity : ComponentActivity() {
 
     private fun initializeAdsIfAllowed() {
         val info = consentInformation ?: return
-        if (!info.canRequestAds() || adsReady || adsInitializationStarted) return
+        if (!info.canRequestAds()) {
+            adsReady = false
+            return
+        }
+        if (adsSdkInitialized) {
+            adsReady = true
+            return
+        }
+        if (adsInitializationStarted) return
         adsInitializationStarted = true
         Thread {
             MobileAds.initialize(
                 this,
                 InitializationConfig.Builder(BuildConfig.ADMOB_APP_ID).build()
             ) {
-                runOnUiThread { adsReady = true }
+                runOnUiThread {
+                    adsSdkInitialized = true
+                    adsReady = info.canRequestAds()
+                }
             }
         }.start()
     }
 
     private fun showPrivacyOptions() {
         if (!privacyOptionsRequired) return
+        adsReady = false
         UserMessagingPlatform.showPrivacyOptionsForm(this) {
             initializeAdsIfAllowed()
         }
