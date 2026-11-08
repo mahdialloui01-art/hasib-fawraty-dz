@@ -293,6 +293,7 @@ fun HasibApp(
                 Column {
                     if (adsReady && selected == null) {
                         AdBanner()
+                        Spacer(Modifier.height(24.dp))
                     }
                     NavigationBar(containerColor = Panel, contentColor = Green) {
                     NavigationBarItem(selected = tab == 0, onClick = { tab = 0; selected = null }, icon = { Icon(Icons.Default.Dashboard, null) }, label = { Text("الرئيسية") })
