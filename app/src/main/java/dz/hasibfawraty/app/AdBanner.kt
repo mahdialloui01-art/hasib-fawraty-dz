@@ -2,30 +2,34 @@ package dz.hasibfawraty.app
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
 import com.google.android.libraries.ads.mobile.sdk.banner.AdView
@@ -46,21 +50,36 @@ internal fun AdBanner(onDismiss: () -> Unit) {
         AdSize.getLargeAnchoredAdaptiveBannerAdSize(context, screenWidthDp)
     }
     val adView = remember { AdView(context) }
+    var adLoaded by remember(adView) { mutableStateOf(false) }
 
     LaunchedEffect(adView, adSize, adUnitId) {
         val request = BannerAdRequest.Builder(adUnitId, adSize).build()
         adView.loadAd(request, object : AdLoadCallback<BannerAd> {
             override fun onAdLoaded(ad: BannerAd) {
                 Log.d("HasibFawratyAds", "Banner ad loaded")
+                adLoaded = true
             }
 
             override fun onAdFailedToLoad(adError: LoadAdError) {
                 Log.w("HasibFawratyAds", "Banner ad failed to load: $adError")
+                adLoaded = false
             }
         })
     }
 
-    Column(modifier = Modifier.fillMaxWidth().background(Color(0xFF101A25)).padding(vertical = 8.dp)) {
+    DisposableEffect(adView) {
+        onDispose { adView.destroy() }
+    }
+
+    // Do not reserve any space until an actual banner has loaded successfully.
+    if (!adLoaded) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF101A25))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -69,14 +88,20 @@ internal fun AdBanner(onDismiss: () -> Unit) {
             Text(
                 text = "إعلان",
                 color = Color(0xFF9EAFBD),
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Medium
             )
-            IconButton(onClick = onDismiss) {
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color(0xFFD32F2F), CircleShape)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = androidx.compose.material.icons.Icons.Default.Close,
                     contentDescription = "إخفاء الإعلان",
-                    tint = Color(0xFF9EAFBD)
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }
@@ -84,9 +109,5 @@ internal fun AdBanner(onDismiss: () -> Unit) {
             factory = { adView },
             modifier = Modifier.fillMaxWidth().wrapContentHeight()
         )
-    }
-
-    DisposableEffect(adView) {
-        onDispose { adView.destroy() }
     }
 }
