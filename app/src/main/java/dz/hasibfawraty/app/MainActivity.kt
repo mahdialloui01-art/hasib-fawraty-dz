@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var appUpdateManager: AppUpdateManager
     private var updateDownloaded by mutableStateOf(false)
     private var adsReady by mutableStateOf(false)
+    private var adsInitializationStarted = false
     private var privacyOptionsRequired by mutableStateOf(false)
     private var consentInformation: ConsentInformation? = null
 
@@ -183,7 +184,8 @@ class MainActivity : ComponentActivity() {
 
     private fun initializeAdsIfAllowed() {
         val info = consentInformation ?: return
-        if (!info.canRequestAds() || adsReady) return
+        if (!info.canRequestAds() || adsReady || adsInitializationStarted) return
+        adsInitializationStarted = true
         Thread {
             MobileAds.initialize(
                 this,
