@@ -5,6 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import com.google.android.ump.ConsentRequestParameters
+import com.google.android.ump.ConsentInformation
+import com.google.android.ump.UserMessagingPlatform
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -88,6 +93,9 @@ internal fun calculateCashStamp(amountTtc: Double): Double {
 class MainActivity : ComponentActivity() {
     private lateinit var appUpdateManager: AppUpdateManager
     private var updateDownloaded by mutableStateOf(false)
+    private var adsReady by mutableStateOf(false)
+    private var privacyOptionsRequired by mutableStateOf(false)
+    private var consentInformation: ConsentInformation? = null
 
     private val updateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -111,9 +119,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             HasibApp(
                 updateDownloaded = updateDownloaded,
+                adsReady = adsReady,
+                privacyOptionsRequired = privacyOptionsRequired,
+                onShowPrivacyOptions = { showPrivacyOptions() },
                 onCompleteUpdate = { appUpdateManager.completeUpdate() }
             )
         }
+        requestAdConsent()
     }
 
     override fun onResume() {
@@ -139,6 +151,54 @@ class MainActivity : ComponentActivity() {
             appUpdateManager.unregisterListener(installStateListener)
         }
         super.onDestroy()
+    }
+
+    private fun requestAdConsent() {
+        // Ads remain disabled in release builds until real AdMob IDs are configured.
+        if (BuildConfig.ADMOB_APP_ID.isBlank() || BuildConfig.ADMOB_BANNER_AD_UNIT_ID.isBlank()) return
+
+        val info = UserMessagingPlatform.getConsentInformation(this)
+        consentInformation = info
+        val parameters = ConsentRequestParameters.Builder().build()
+        info.requestConsentInfoUpdate(
+            this,
+            parameters,
+            {
+                privacyOptionsRequired =
+                    info.privacyOptionsRequirementStatus ==
+                        ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+                UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) {
+                    initializeAdsIfAllowed()
+                }
+                initializeAdsIfAllowed()
+            },
+            {
+                privacyOptionsRequired =
+                    info.privacyOptionsRequirementStatus ==
+                        ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+                initializeAdsIfAllowed()
+            }
+        )
+    }
+
+    private fun initializeAdsIfAllowed() {
+        val info = consentInformation ?: return
+        if (!info.canRequestAds() || adsReady) return
+        Thread {
+            MobileAds.initialize(
+                this,
+                InitializationConfig.Builder(BuildConfig.ADMOB_APP_ID).build()
+            ) {
+                runOnUiThread { adsReady = true }
+            }
+        }.start()
+    }
+
+    private fun showPrivacyOptions() {
+        if (!privacyOptionsRequired) return
+        UserMessagingPlatform.showPrivacyOptionsForm(this) {
+            initializeAdsIfAllowed()
+        }
     }
 
     private fun checkForPlayUpdate() {
@@ -190,7 +250,13 @@ private fun waterZoneLabel(zone: String): String = when (zone) {
 }
 
 @Composable
-fun HasibApp(updateDownloaded: Boolean = false, onCompleteUpdate: () -> Unit = {}) {
+fun HasibApp(
+    updateDownloaded: Boolean = false,
+    adsReady: Boolean = false,
+    privacyOptionsRequired: Boolean = false,
+    onShowPrivacyOptions: () -> Unit = {},
+    onCompleteUpdate: () -> Unit = {}
+) {
     val categories = listOf(
         BillCategory("سونلغاز", "فاتورة موحدة • الكهرباء والغاز", Icons.Default.Bolt, Color(0xFFFFC857)),
         BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
@@ -209,16 +275,25 @@ fun HasibApp(updateDownloaded: Boolean = false, onCompleteUpdate: () -> Unit = {
         Scaffold(
             containerColor = Ink,
             bottomBar = {
-                NavigationBar(containerColor = Panel, contentColor = Green) {
+                Column {
+                    if (adsReady && selected == null) {
+                        AdBanner()
+                    }
+                    NavigationBar(containerColor = Panel, contentColor = Green) {
                     NavigationBarItem(selected = tab == 0, onClick = { tab = 0; selected = null }, icon = { Icon(Icons.Default.Dashboard, null) }, label = { Text("الرئيسية") })
                     NavigationBarItem(selected = tab == 1, onClick = { tab = 1; selected = null }, icon = { Icon(Icons.Default.ReceiptLong, null) }, label = { Text("فواتيري") })
                     NavigationBarItem(selected = tab == 2, onClick = { tab = 2; selected = null }, icon = { Icon(Icons.Default.Analytics, null) }, label = { Text("الإحصائيات") })
                     NavigationBarItem(selected = tab == 3, onClick = { tab = 3; selected = null }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("الإعدادات") })
+                    }
                 }
             }
         ) { padding ->
             if (tab == 3 && selected == null) {
-                SettingsScreen(contentPadding = padding)
+                SettingsScreen(
+                    contentPadding = padding,
+                    privacyOptionsRequired = privacyOptionsRequired,
+                    onShowPrivacyOptions = onShowPrivacyOptions
+                )
             } else if (tab == 1 && selected == null) {
                 BillHistoryScreen(padding, history, { e -> history.removeAll { it.id == e.id }; BillHistoryStore.save(context,history) }, { history.clear(); BillHistoryStore.save(context,history) })
             } else if (tab == 2 && selected == null) {
