@@ -116,7 +116,6 @@ fun HasibApp() {
     val categories = listOf(
         BillCategory("سونلغاز", "فاتورة موحدة • الكهرباء والغاز", Icons.Default.Bolt, Color(0xFFFFC857)),
         BillCategory("الماء", "ADE أو شركة المياه المحلية", Icons.Default.WaterDrop, Color(0xFF54B9F2)),
-        BillCategory("اتصالات الجزائر", "Idoom • الإنترنت والهاتف الثابت", Icons.Default.Wifi, Color(0xFF9B8CFF))
     )
     val context = androidx.compose.ui.platform.LocalContext.current
     val history = remember { mutableStateListOf<BillHistoryEntry>().apply { addAll(BillHistoryStore.load(context)) } }
@@ -569,7 +568,7 @@ private fun SettingsScreen(contentPadding: PaddingValues) {
             Spacer(Modifier.height(6.dp))
             Text("حاسب فاتورتي DZ", color = Color.White, fontWeight = FontWeight.Bold)
             Text("الإصدار 1.0.0", color = Muted, fontSize = 12.sp)
-            Text("حاسبة تقديرية لفواتير الكهرباء والغاز والماء واتصالات الجزائر. النتائج ليست فاتورة رسمية.", color = Muted, fontSize = 11.sp)
+            Text("حاسبة تقديرية لفواتير الكهرباء والغاز والماء. النتائج ليست فاتورة رسمية.", color = Muted, fontSize = 11.sp)
         }
         Spacer(Modifier.height(12.dp))
         Text("الخصوصية والدعم يعملان من داخل التطبيق، ولا يتم توجيهك إلى مستودع برمجي أو موقع خارجي.", color = Green, fontSize = 11.sp)
