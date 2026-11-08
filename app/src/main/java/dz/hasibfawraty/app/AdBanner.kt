@@ -1,5 +1,7 @@
 package dz.hasibfawraty.app
 
+// Banner status diagnostics and consent-gated loading.
+
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
